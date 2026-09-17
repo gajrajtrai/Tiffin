@@ -1,7 +1,0 @@
-New-Item -ItemType Directory -Force -Path "app\Modules\Menu\Models"
-New-Item -ItemType Directory -Force -Path "app\Modules\Order\Models"
-New-Item -ItemType Directory -Force -Path "app\Modules\Payment\Models"
-New-Item -ItemType Directory -Force -Path "app\Modules\Inventory\Models"
-New-Item -ItemType Directory -Force -Path "app\Modules\Supplier\Models"
-New-Item -ItemType Directory -Force -Path "app\Modules\Expense\Models"
-New-Item -ItemType Directory -Force -Path "app\Modules\Report\Models"
