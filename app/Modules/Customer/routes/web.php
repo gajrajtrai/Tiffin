@@ -4,9 +4,10 @@ use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| Customer Module Routes
+| Customer (Public Site) Module Routes
 |--------------------------------------------------------------------------
-|
-| Routes for the Customer module of Tamkulay Tiffins.
-|
 */
+
+Route::get('/', function () {
+    return view('public.home');
+})->name('home');
