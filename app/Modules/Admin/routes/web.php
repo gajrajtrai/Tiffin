@@ -6,7 +6,10 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 | Admin Module Routes
 |--------------------------------------------------------------------------
-|
-| Routes for the Admin module of Tamkulay Tiffins.
-|
 */
+
+Route::prefix('admin')->name('admin.')->group(function () {
+    Route::get('/dashboard', function () {
+        return view('admin.dashboard');
+    })->name('dashboard');
+});

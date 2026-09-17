@@ -28,6 +28,46 @@
     --color-accent-foreground: var(--color-white);
 }
 
+/* ──────────────────────────────────────────────────────────
+   Tamkulay Tiffins — Brand palette
+   ────────────────────────────────────────────────────────── */
+@theme {
+    /* Warm orange — primary brand */
+    --color-brand-50:  #fef6ee;
+    --color-brand-100: #fde9d3;
+    --color-brand-200: #fad0a8;
+    --color-brand-300: #f5b070;
+    --color-brand-400: #ef8c3b;
+    --color-brand-500: #e67e22;
+    --color-brand-600: #d35400;
+    --color-brand-700: #b0460c;
+    --color-brand-800: #8c3a0e;
+    --color-brand-900: #73310f;
+
+    /* Off-white cream — page backgrounds */
+    --color-cream-50:  #fdf6f0;
+    --color-cream-100: #f8ead9;
+}
+
+/* ──────────────────────────────────────────────────────
+   Tamkulay Tiffins — Brand palette
+   ────────────────────────────────────────────────────── */
+@theme {
+    --color-brand-50:  #fef6ee;
+    --color-brand-100: #fde9d3;
+    --color-brand-200: #fad0a8;
+    --color-brand-300: #f5b070;
+    --color-brand-400: #ef8c3b;
+    --color-brand-500: #e67e22;
+    --color-brand-600: #d35400;
+    --color-brand-700: #b0460c;
+    --color-brand-800: #8c3a0e;
+    --color-brand-900: #73310f;
+    --color-cream-50:  #fdf6f0;
+    --color-cream-100: #f8ead9;
+}
+
+
 @layer theme {
     .dark {
         --color-accent: var(--color-white);
