@@ -29,7 +29,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['name', 'email', 'password'])]
+#[Fillable(['name', 'email', 'mobile', 'password', 'low_balance_threshold', 'status'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable implements PasskeyUser
 {
@@ -42,12 +42,15 @@ class User extends Authenticatable implements PasskeyUser
      * @return array<string, string>
      */
     protected function casts(): array
-    {
-        return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-        ];
-    }
+{
+    return [
+        'email_verified_at' => 'datetime',
+        'password' => 'hashed',
+        'mobile_verified_at' => 'datetime',
+        'wallet_balance' => 'decimal:2',
+        'low_balance_threshold' => 'decimal:2',
+    ];
+}
 
     /**
      * Get the user's initials
@@ -59,5 +62,61 @@ class User extends Authenticatable implements PasskeyUser
         return Str::length($initials) > 1
             ? Str::substr($initials, 0, 1).Str::substr($initials, -1)
             : $initials;
+    }
+    /*
+    |--------------------------------------------------------------------------
+    | Relationships
+    |--------------------------------------------------------------------------
+    */
+
+    public function orders(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(\App\Modules\Order\Models\Order::class);
+    }
+
+    public function walletTransactions(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(\App\Modules\Payment\Models\WalletTransaction::class);
+    }
+
+    public function paymentProofs(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(\App\Modules\Payment\Models\PaymentProof::class);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Role / status helpers
+    |--------------------------------------------------------------------------
+    */
+
+    public function isAdmin(): bool
+    {
+        return $this->hasRole('Admin');
+    }
+
+    public function isManager(): bool
+    {
+        return $this->hasRole('Manager');
+    }
+
+    public function isStaff(): bool
+    {
+        return $this->hasAnyRole(['Admin', 'Manager', 'Kitchen Staff', 'Delivery Staff']);
+    }
+
+    public function isCustomer(): bool
+    {
+        return $this->hasRole('Customer');
+    }
+
+    public function isActive(): bool
+    {
+        return $this->status === 'active';
+    }
+
+    public function hasLowBalance(): bool
+    {
+        return $this->wallet_balance < $this->low_balance_threshold;
     }
 }

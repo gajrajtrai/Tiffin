@@ -1,0 +1,65 @@
+<?php
+
+namespace App\Modules\Core\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Cache;
+
+class Setting extends Model
+{
+    protected $fillable = [
+        'key', 'value', 'type', 'group', 'label', 'description',
+    ];
+
+    protected static function booted(): void
+    {
+        static::saved(fn () => Cache::forget('settings.all'));
+        static::deleted(fn () => Cache::forget('settings.all'));
+    }
+
+    /**
+     * All settings as key => typed value, cached until any setting changes.
+     */
+    public static function allCached(): array
+    {
+        return Cache::rememberForever('settings.all', function () {
+            return static::query()
+                ->get()
+                ->mapWithKeys(fn (self $s) => [$s->key => $s->typedValue()])
+                ->all();
+        });
+    }
+
+    /**
+     * Read a setting's typed value.
+     */
+    public static function get(string $key, mixed $default = null): mixed
+    {
+        return static::allCached()[$key] ?? $default;
+    }
+
+    /**
+     * Write a setting. Value is stored as string, type drives read-back cast.
+     */
+    public static function set(string $key, mixed $value): void
+    {
+        static::updateOrCreate(
+            ['key' => $key],
+            ['value' => is_array($value) ? json_encode($value) : (string) $value]
+        );
+    }
+
+    /**
+     * Return the value cast according to its declared type.
+     */
+    public function typedValue(): mixed
+    {
+        return match ($this->type) {
+            'integer' => (int) $this->value,
+            'decimal' => (float) $this->value,
+            'boolean' => filter_var($this->value, FILTER_VALIDATE_BOOLEAN),
+            'json'    => json_decode($this->value ?? 'null', true),
+            default   => $this->value,
+        };
+    }
+}
