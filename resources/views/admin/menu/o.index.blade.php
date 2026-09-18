@@ -6,27 +6,15 @@
             <h1 class="text-xl font-bold text-slate-900">Menu Items</h1>
             <p class="mt-1 text-sm text-slate-500">Master catalog of all dishes. Daily availability is managed separately.</p>
         </div>
-        <div class="flex flex-wrap items-center gap-2 self-start sm:self-auto">
-            @can('menu.publish')
-                <a href="{{ route('admin.menu.daily') }}"
-                   class="inline-flex items-center gap-2 rounded-lg border border-brand-500 bg-white px-4 py-2 text-sm font-semibold text-brand-600 hover:bg-brand-50">
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                    </svg>
-                    Publish Daily Menu
-                </a>
-            @endcan
-
-            @can('menu.create')
-                <a href="{{ route('admin.menu.create') }}"
-                   class="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-brand-600">
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                    </svg>
-                    Add Menu Item
-                </a>
-            @endcan
-        </div>
+        @can('menu.create')
+            <a href="{{ route('admin.menu.create') }}"
+               class="inline-flex items-center gap-2 self-start rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-brand-600 sm:self-auto">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+                Add Menu Item
+            </a>
+        @endcan
     </div>
 
     @if ($statusMessage)

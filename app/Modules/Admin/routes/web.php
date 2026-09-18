@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Admin\Http\Livewire\DailyPublisher;
 use App\Modules\Admin\Http\Livewire\Dashboard;
 use App\Modules\Admin\Http\Livewire\MenuItemForm;
 use App\Modules\Admin\Http\Livewire\MenuItemsIndex;
@@ -29,5 +30,6 @@ Route::middleware(['web', 'auth'])
         // Menu
         Route::get('/menu', MenuItemsIndex::class)->name('menu.index');
         Route::get('/menu/create', MenuItemForm::class)->name('menu.create');
+        Route::get('/menu/daily', DailyPublisher::class)->name('menu.daily');
         Route::get('/menu/{item}/edit', MenuItemForm::class)->name('menu.edit');
     });
