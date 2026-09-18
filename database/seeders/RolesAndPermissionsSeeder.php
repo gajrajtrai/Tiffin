@@ -11,7 +11,6 @@ class RolesAndPermissionsSeeder extends Seeder
 {
     public function run(): void
     {
-        // Reset cached roles and permissions
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
         $config = config('tiffin');
@@ -21,9 +20,14 @@ class RolesAndPermissionsSeeder extends Seeder
             return;
         }
 
-        // 1. Collect every permission from every role
+        // 1. Collect every permission — from the master list AND from every role
         $allPermissions = [];
-        foreach ($config['roles'] as $roleName => $roleData) {
+
+        foreach ($config['all_permissions'] ?? [] as $perm) {
+            $allPermissions[$perm] = true;
+        }
+
+        foreach ($config['roles'] as $roleData) {
             foreach ($roleData['permissions'] as $perm) {
                 if ($perm !== '*') {
                     $allPermissions[$perm] = true;
@@ -48,7 +52,6 @@ class RolesAndPermissionsSeeder extends Seeder
             ]);
 
             if (in_array('*', $roleData['permissions'], true)) {
-                // Admin gets all permissions
                 $role->syncPermissions(Permission::all());
                 $this->command->info("✓ Role [{$roleName}] → ALL permissions");
             } else {

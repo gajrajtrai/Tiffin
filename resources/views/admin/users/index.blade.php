@@ -1,5 +1,21 @@
 <div class="space-y-6">
 
+    {{-- ─── Page header ────────────────────────────────────── --}}
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+            <h1 class="text-xl font-bold text-slate-900">User Management</h1>
+            <p class="mt-1 text-sm text-slate-500">Manage customers, staff, roles, and access.</p>
+        </div>
+        @can('user.create')
+            <a href="{{ route('admin.users.create') }}"
+               class="inline-flex items-center gap-2 self-start rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-brand-600 sm:self-auto">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+                Add Staff
+            </a>
+        @endcan
+    </div>
     {{-- ─── Summary cards ──────────────────────────────────── --}}
     <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <x-admin.stat-card label="Total Users" :value="$counts['total']" icon="users" color="brand" />
@@ -130,7 +146,7 @@
                         </x-admin.badge>
                     </td>
                     <td class="px-4 py-3 text-right">
-                        <a href="#"
+                        <a href="{{ route('admin.users.show', $user) }}"
                            class="inline-flex items-center gap-1 text-sm font-medium text-brand-600 hover:text-brand-700">
                             View
                             <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
