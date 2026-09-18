@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Admin\Http\Livewire\Dashboard;
+use App\Modules\Admin\Http\Livewire\UsersIndex;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -8,11 +9,15 @@ use Illuminate\Support\Facades\Route;
 | Admin Module Routes
 |--------------------------------------------------------------------------
 |
-| All routes here are prefixed with /admin.
-| Auth middleware will be added in Phase 7.
+| The "web" middleware group is required for session, cookies, and CSRF.
+| Module routes loaded via service providers do NOT get it automatically.
 |
 */
 
-Route::prefix('admin')->name('admin.')->group(function () {
-    Route::get('/dashboard', Dashboard::class)->name('dashboard');
-});
+Route::middleware(['web', 'auth'])
+    ->prefix('admin')
+    ->name('admin.')
+    ->group(function () {
+        Route::get('/dashboard', Dashboard::class)->name('dashboard');
+        Route::get('/users', UsersIndex::class)->name('users.index');
+    });
