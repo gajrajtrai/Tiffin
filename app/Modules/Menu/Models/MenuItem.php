@@ -7,10 +7,16 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
+use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\InteractsWithMedia;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
-class MenuItem extends Model
+class MenuItem extends Model implements HasMedia
 {
     use SoftDeletes;
+    use InteractsWithMedia;
+
+    public const MEDIA_IMAGE = 'image';
 
     protected $fillable = [
         'name', 'slug', 'description', 'type', 'is_veg',
@@ -57,6 +63,28 @@ class MenuItem extends Model
         }
 
         return $slug;
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Media
+    |--------------------------------------------------------------------------
+    */
+
+    public function registerMediaCollections(): void
+    {
+        $this->addMediaCollection(self::MEDIA_IMAGE)
+             ->singleFile()
+             ->acceptsMimeTypes(['image/jpeg', 'image/png', 'image/webp']);
+    }
+
+    public function registerMediaConversions(?Media $media = null): void
+    {
+        $this->addMediaConversion('thumb')
+             ->width(300)
+             ->height(300)
+             ->sharpen(5)
+             ->nonQueued();
     }
 
     /*
@@ -129,8 +157,20 @@ class MenuItem extends Model
 
     public function getImageUrlAttribute(): ?string
     {
+        if ($this->hasMedia(self::MEDIA_IMAGE)) {
+            // Use the original file — the 'thumb' conversion requires a queue worker
+            return $this->getFirstMediaUrl(self::MEDIA_IMAGE);
+        }
+
         return $this->image_path
             ? asset('storage/'.$this->image_path)
             : null;
+    }
+
+    public function isPublishedToday(): bool
+    {
+        return $this->dailyMenus()
+            ->whereDate('service_date', today())
+            ->exists();
     }
 }

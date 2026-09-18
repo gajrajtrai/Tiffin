@@ -1,0 +1,15 @@
+A Note for Production
+
+When you deploy to your hosting server, APP_URL must match whatever URL the site is served on:
+Environment	APP_URL
+Local dev	http://localhost:8000
+Production (LAN)	http://<server-ip>:8000 or http://tiffin.local
+Production (with domain)	https://tamkulaytiffins.bt
+
+Important: If you access the site via multiple URLs (e.g., both localhost and your LAN IP 192.168.1.50), the absolute URLs Laravel generates will always use whatever APP_URL says — not the actual request URL. Two options:
+
+    Stick to one URL — pick one canonical way to reach the app and always use it.
+
+    Use relative URLs — change getFirstMediaUrl() calls to output /storage/... instead of http://.... We can do this with getFirstMediaUrl(self::MEDIA_IMAGE) piped through parse_url() or by setting APP_URL to empty. But you lose the convenience of absolute URLs (which are needed for emails, notifications, QR codes, etc.).
+
+For now, http://localhost:8000 is right for dev. We'll revisit at Phase 14 (Production Readiness) when the deployment target is known.
