@@ -1,13 +1,22 @@
 <div class="space-y-6">
 
-    {{-- ─── Back link ──────────────────────────────────────── --}}
-    <a href="{{ route('admin.menu.index') }}"
-       class="inline-flex items-center gap-1 text-sm font-medium text-slate-500 hover:text-brand-600">
-        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-        </svg>
-        Back to Menu Catalog
-    </a>
+    {{-- ─── Top bar ────────────────────────────────────────── --}}
+    <div class="flex items-center justify-between">
+        <a href="{{ route('admin.menu.index') }}"
+           class="inline-flex items-center gap-1 text-sm font-medium text-slate-500 hover:text-brand-600">
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+            </svg>
+            Back to Menu Catalog
+        </a>
+        <a href="{{ route('admin.menu.weekly') }}"
+           class="inline-flex items-center gap-1.5 rounded-lg border border-brand-500 bg-white px-3 py-1.5 text-sm font-semibold text-brand-600 hover:bg-brand-50">
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+            </svg>
+            Weekly view
+        </a>
+    </div>
 
     @if ($statusMessage)
         <x-admin.alert :type="$statusType">{{ $statusMessage }}</x-admin.alert>
