@@ -2,6 +2,9 @@
 
 use App\Modules\Admin\Http\Livewire\DailyPublisher;
 use App\Modules\Admin\Http\Livewire\Dashboard;
+use App\Modules\Admin\Http\Livewire\InventoryItemDetail;
+use App\Modules\Admin\Http\Livewire\InventoryItemForm;
+use App\Modules\Admin\Http\Livewire\InventoryItemsIndex;
 use App\Modules\Admin\Http\Livewire\KitchenBoard;
 use App\Modules\Admin\Http\Livewire\MenuItemForm;
 use App\Modules\Admin\Http\Livewire\MenuItemsIndex;
@@ -46,4 +49,10 @@ Route::middleware(['web', 'auth'])
 
         // Payments
         Route::get('/payments', PaymentsIndex::class)->name('payments.index');
+
+        // Inventory
+        Route::get('/inventory', InventoryItemsIndex::class)->name('inventory.index');
+        Route::get('/inventory/create', InventoryItemForm::class)->name('inventory.create');
+        Route::get('/inventory/{item}', InventoryItemDetail::class)->name('inventory.show');
+        Route::get('/inventory/{item}/edit', InventoryItemForm::class)->name('inventory.edit');
     });

@@ -50,6 +50,18 @@ class Setting extends Model
     }
 
     /**
+     * Write a JSON-valued setting. The type field is set to 'json'
+     * so typedValue() decodes it automatically.
+     */
+    public static function setJson(string $key, array $value): void
+    {
+        static::updateOrCreate(
+            ['key' => $key],
+            ['value' => json_encode($value), 'type' => 'json']
+        );
+    }
+
+    /**
      * Return the value cast according to its declared type.
      */
     public function typedValue(): mixed

@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Customer\Http\Livewire\WalletIndex;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -11,3 +12,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return view('public.home');
 })->name('home');
+
+Route::middleware(['web', 'auth'])->group(function () {
+    Route::get('/wallet', WalletIndex::class)->name('wallet.index');
+});

@@ -20,14 +20,13 @@
 
         @if ($user)
             {{-- Wallet pill --}}
-            <a href="{{ route('wallet.index') }}"
-               class="hidden items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-100 sm:flex">
+            <div class="hidden items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 sm:flex">
                 <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                           d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z"/>
                 </svg>
-                Nu. {{ number_format($user->wallet_balance, 2) }}
-            </a>
+                Nu. 0
+            </div>
 
             {{-- User menu --}}
             <div x-data="{ open: false }" class="relative">

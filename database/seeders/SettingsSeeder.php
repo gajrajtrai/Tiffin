@@ -26,6 +26,11 @@ class SettingsSeeder extends Seeder
             ['low_balance_threshold', 500,  'decimal', 'payment', 'Low Balance Warning Threshold'],
             ['wallet_min_topup',      500,  'decimal', 'payment', 'Minimum Wallet Top-up'],
             ['wallet_max_topup',      5000, 'decimal', 'payment', 'Maximum Wallet Top-up'],
+			// ─── Bank details for customer top-up ─────────────────────
+            ['bank_name',           'Bank of Bhutan',    'string', 'payment', 'Bank Name'],
+            ['bank_account_name',   'Tamkulay Tiffins',  'string', 'payment', 'Account Holder Name'],
+            ['bank_account_number', '1234567890',        'string', 'payment', 'Account Number'],
+            ['wallet_qr_image_path','',                  'string', 'payment', 'Merchant QR Image (filename in /public/qr/)'],
 
             // ─── Tax ───────────────────────────────────────────────────
             ['tax_label', 'GST', 'string',  'payment', 'Tax Label'],
