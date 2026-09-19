@@ -16,12 +16,14 @@ use App\Modules\Admin\Http\Livewire\PaymentsIndex;
 use App\Modules\Admin\Http\Livewire\PurchaseOrderDetail;
 use App\Modules\Admin\Http\Livewire\PurchaseOrderForm;
 use App\Modules\Admin\Http\Livewire\PurchaseOrdersIndex;
+use App\Modules\Admin\Http\Livewire\ReportsDashboard;
 use App\Modules\Admin\Http\Livewire\SupplierForm;
 use App\Modules\Admin\Http\Livewire\SuppliersIndex;
 use App\Modules\Admin\Http\Livewire\UserDetail;
 use App\Modules\Admin\Http\Livewire\UserForm;
 use App\Modules\Admin\Http\Livewire\UsersIndex;
 use App\Modules\Admin\Http\Livewire\WeeklyPublisher;
+use App\Modules\Admin\Http\Controllers\ReportExportController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -77,4 +79,8 @@ Route::middleware(['web', 'auth'])
         // Goods Receipts
         Route::get('/receipts', GoodsReceiptsIndex::class)->name('receipts.index');
         Route::get('/receipts/{gr}', GoodsReceiptDetail::class)->name('receipts.show');
+
+        // Reports
+        Route::get('/reports', ReportsDashboard::class)->name('reports.index');
+		Route::get('/reports/export', ReportExportController::class)->name('reports.export');
     });
