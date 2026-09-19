@@ -4,6 +4,7 @@
         ['label' => 'Dashboard',   'route' => 'admin.dashboard',    'icon' => 'home',      'active' => request()->routeIs('admin.dashboard')],
         ['section' => 'Operations'],
         ['label' => 'Orders',      'route' => 'admin.orders.index', 'icon' => 'receipt',   'active' => request()->routeIs('admin.orders.*')],
+		['label' => 'Kitchen Board', 'route' => 'admin.orders.kitchen', 'icon' => 'cube', 'active' => request()->routeIs('admin.orders.kitchen')],
         ['label' => 'Menu',        'route' => 'admin.menu.index',   'icon' => 'book',      'active' => request()->routeIs('admin.menu.*')],
         ['label' => 'Payments',    'route' => 'admin.payments.index', 'icon' => 'credit-card', 'active' => request()->routeIs('admin.payments.*')],
         ['section' => 'Back of House'],

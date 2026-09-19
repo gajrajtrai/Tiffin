@@ -2,6 +2,7 @@
 
 use App\Modules\Admin\Http\Livewire\DailyPublisher;
 use App\Modules\Admin\Http\Livewire\Dashboard;
+use App\Modules\Admin\Http\Livewire\KitchenBoard;
 use App\Modules\Admin\Http\Livewire\MenuItemForm;
 use App\Modules\Admin\Http\Livewire\MenuItemsIndex;
 use App\Modules\Admin\Http\Livewire\OrderDetail;
@@ -39,5 +40,6 @@ Route::middleware(['web', 'auth'])
 
         // Orders
         Route::get('/orders', OrdersIndex::class)->name('orders.index');
+        Route::get('/orders/kitchen', KitchenBoard::class)->name('orders.kitchen');
         Route::get('/orders/{order}', OrderDetail::class)->name('orders.show');
     });
