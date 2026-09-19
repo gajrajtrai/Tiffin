@@ -23,7 +23,10 @@ class DemoFreshCommand extends Command
         DB::table('order_items')->delete();
         DB::table('orders')->delete();
         DB::table('wallet_transactions')->delete();
-        DB::table('payment_proofs')->delete();
+        // Clean media first, then delete proofs
+        foreach (\App\Modules\Payment\Models\PaymentProof::with('media')->get() as $proof) {
+            $proof->clearMediaCollection(\App\Modules\Payment\Models\PaymentProof::MEDIA_SCREENSHOT);
+        }
         DB::table('daily_menu')->delete();
         DB::table('expenses')->delete();
         DB::table('expense_categories')->delete();

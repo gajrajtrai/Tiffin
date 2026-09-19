@@ -7,6 +7,7 @@ use App\Modules\Admin\Http\Livewire\MenuItemForm;
 use App\Modules\Admin\Http\Livewire\MenuItemsIndex;
 use App\Modules\Admin\Http\Livewire\OrderDetail;
 use App\Modules\Admin\Http\Livewire\OrdersIndex;
+use App\Modules\Admin\Http\Livewire\PaymentsIndex;
 use App\Modules\Admin\Http\Livewire\UserDetail;
 use App\Modules\Admin\Http\Livewire\UserForm;
 use App\Modules\Admin\Http\Livewire\UsersIndex;
@@ -42,4 +43,7 @@ Route::middleware(['web', 'auth'])
         Route::get('/orders', OrdersIndex::class)->name('orders.index');
         Route::get('/orders/kitchen', KitchenBoard::class)->name('orders.kitchen');
         Route::get('/orders/{order}', OrderDetail::class)->name('orders.show');
+
+        // Payments
+        Route::get('/payments', PaymentsIndex::class)->name('payments.index');
     });
