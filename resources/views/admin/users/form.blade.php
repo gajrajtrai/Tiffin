@@ -28,10 +28,10 @@
                     <div>
                         <label class="mb-1 block text-xs font-medium text-slate-600">Mobile <span class="text-rose-500">*</span></label>
                         <input type="text" wire:model="mobile"
-                               placeholder="+97517123456"
+                               placeholder="17123456"
                                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500" />
                         @error('mobile') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
-                        <p class="mt-1 text-[11px] text-slate-400">Bhutanese format: +975 followed by 8 digits</p>
+                        <p class="mt-1 text-[11px] text-slate-400">Bhutanese Mobile format: 8 digits</p>
                     </div>
 
                     <div>

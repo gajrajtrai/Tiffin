@@ -65,7 +65,7 @@ class UserForm extends Component
 
         return [
             'name'             => 'required|string|max:255',
-            'mobile'           => ['required', 'string', 'regex:/^\+975\d{8}$/', Rule::unique('users', 'mobile')->ignore($userId)],
+            'mobile'           => ['required', 'string', 'regex:/^\d{8}$/', Rule::unique('users', 'mobile')->ignore($userId)],
             'email'            => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')->ignore($userId)],
             'status'           => 'required|in:active,suspended',
             'selectedRoles'    => 'required|array|min:1',
@@ -79,7 +79,7 @@ class UserForm extends Component
     protected function messages(): array
     {
         return [
-            'mobile.regex'           => 'Mobile must be Bhutanese format: +975 followed by 8 digits.',
+            'mobile.regex'           => 'Mobile must be 8 digits (e.g. 17111101).',
             'selectedRoles.required' => 'Assign at least one role.',
             'selectedRoles.min'      => 'Assign at least one role.',
             'password.confirmed'     => 'The password confirmation does not match.',

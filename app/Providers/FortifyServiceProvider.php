@@ -82,16 +82,15 @@ class FortifyServiceProvider extends ServiceProvider
                 return null;
             }
 
-            // Normalise Bhutanese mobile format: 17111101 → +97517111101
-            $mobileCandidate = $identifier;
-            if (preg_match('/^\d{8}$/', $identifier)) {
-                $mobileCandidate = '+975'.$identifier;
-            } elseif (preg_match('/^975\d{8}$/', $identifier)) {
-                $mobileCandidate = '+'.$identifier;
-            }
+            // Normalise any common entry format down to 8-digit local:
+            //   +97517111101 → 17111101
+            //   97517111101  → 17111101
+            //   17111101     → 17111101
+            $mobileCandidate = preg_replace('/^(\+?975)/', '', trim($identifier));
 
             $user = User::query()
                 ->where('mobile', $mobileCandidate)
+                ->orWhere('mobile', $identifier)   // backward compat: match old +975 form if any remain
                 ->orWhere('email', $identifier)
                 ->first();
 

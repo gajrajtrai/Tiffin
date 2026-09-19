@@ -71,13 +71,13 @@ class DemoSeeder extends Seeder
 
         // ─── 3. Customers + wallet top-ups ────────────────────────
         $customers = [
-            ['name' => 'Sonam Wangchuk', 'mobile' => '+97517111101', 'topup' => 2000],
-            ['name' => 'Pema Choden',    'mobile' => '+97517111102', 'topup' => 3000],
-            ['name' => 'Tashi Dorji',    'mobile' => '+97517111103', 'topup' => 1500],
-            ['name' => 'Karma Wangmo',   'mobile' => '+97517111104', 'topup' => 2500],
-            ['name' => 'Dechen Zangmo',  'mobile' => '+97517111105', 'topup' => 1000],
+		    ['name' => 'Sonam Wangchuk', 'mobile' => '17111101', 'topup' => 2000],
+            ['name' => 'Pema Choden',    'mobile' => '17111102', 'topup' => 3000],
+            ['name' => 'Tashi Dorji',    'mobile' => '17111103', 'topup' => 1500],
+            ['name' => 'Karma Wangmo',   'mobile' => '17111104', 'topup' => 2500],
+            ['name' => 'Dechen Zangmo',  'mobile' => '17111105', 'topup' => 1000],
         ];
-
+        
         $users = [];
         foreach ($customers as $data) {
             $user = User::create([
@@ -190,7 +190,7 @@ class DemoSeeder extends Seeder
         Supplier::create([
             'name'           => 'Thimphu Fresh Produce',
             'contact_person' => 'Tashi Dorji',
-            'mobile'         => '+97517666001',
+            'mobile'         => '17666001',
             'supplies'       => 'vegetables, dairy',
         ]);
 

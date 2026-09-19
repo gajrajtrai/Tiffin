@@ -14,6 +14,12 @@ use Livewire\Component;
 #[Layout('components.layouts.admin')]
 class Dashboard extends Component
 {
+	    public function mount(): void
+    {
+        if (! auth()->user()->can('order.view')) {
+            abort(403);
+        }
+    }
     public function layoutData(): array
     {
         return [

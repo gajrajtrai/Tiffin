@@ -27,7 +27,12 @@ class PaymentsIndex extends Component
     public ?int $reviewingId = null;
     public string $approvalAmount = '';
     public string $rejectionReason = '';
-
+    public function mount(): void
+    {
+        if (! auth()->user()->can('payment.view')) {
+            abort(403);
+        }
+    }
     public function updating(string $name): void
     {
         if (in_array($name, ['statusFilter', 'search'], true)) {

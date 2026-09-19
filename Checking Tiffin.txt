@@ -1,0 +1,74 @@
+		['label' => 'Kitchen Board', 'route' => 'admin.orders.kitchen', 'icon' => 'cube', 'active' => request()->routeIs('admin.orders.kitchen')],
+        ['label' => 'Expenses',    'route' => 'admin.expenses.index',  'icon' => 'banknotes', 'active' => request()->routeIs('admin.expenses.*')],
+
+
+Things Worth Checking on Your Tour
+
+When you review the site, keep an eye out for:
+
+Admin side
+
+    Are any numbers on the dashboard stale or wrong?
+
+    Does the flow between Orders → Kitchen Board → Mark delivered feel natural?
+
+    Are there labels that don't match how you talk about the business?
+
+    Is the sidebar missing something you'd want one click away?
+
+    Are there any buttons that go to the wrong place?
+
+Customer side (log in as +97517111101 / demo1234)
+
+    Does the wallet page look right on your actual phone?
+
+    Is the top-up QR workflow clear enough for a first-time customer?
+
+    Is the menu easy to read? Any text too small?
+
+Content
+
+    Menu item names, prices — do they match your real menu?
+
+    Restaurant name, address, mobile in settings?
+
+    Bank accounts and QR images?
+
+When You Come Back
+
+Two ways to resume:
+
+Option A — If you've found tweaks, just describe them. We'll fix them and commit under Phase 13.5 (polish).
+
+Option B — If nothing critical, we jump into Phase 14 — Security Hardening:
+
+    Rate limiting on login, top-up, orders
+
+    Password policy enforcement
+
+    HTTPS + security headers
+
+    Session config
+
+    Permission audit
+
+    Admin panel lockdown
+
+Then Phase 15 — Production Readiness:
+
+    Production .env
+
+    Backup scheduling
+
+    Deployment script
+
+    Error monitoring
+
+    Go-live checklist
+	
+
+Points for Deepseek
+
+1. Sidebar- menu under Administration, like Users / Settings is not visible(below the screen).
+2. On the Sidebar, under "Back of House", there is expense menu which is not yer activated. I would like it to be moved to "Report" Menu. This will help de-cluster Sidepanel navigation.
+3. I would like to suggest that we separate "Staff" from "Customer" at the Database level (make separate Database). The reason is even when staff signs in it takes to wallet instead of Dashboard. Also, "Users" menu is visible by admin staff created manually. Only admin created as test has access to it.

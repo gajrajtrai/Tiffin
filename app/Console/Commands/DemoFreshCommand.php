@@ -31,7 +31,7 @@ class DemoFreshCommand extends Command
         DB::table('expenses')->delete();
         DB::table('expense_categories')->delete();
 
-        $demoMobiles = ['+97517111101', '+97517111102', '+97517111103', '+97517111104', '+97517111105'];
+        $demoMobiles = ['17111101', '17111102', '17111103', '17111104', '17111105'];
         User::whereIn('mobile', $demoMobiles)->forceDelete();
 
         // Clear the master catalogs the seeder recreates
