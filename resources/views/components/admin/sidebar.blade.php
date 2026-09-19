@@ -10,6 +10,8 @@
         ['section' => 'Back of House'],
         ['label' => 'Inventory',   'route' => 'admin.inventory.index', 'icon' => 'cube',    'active' => request()->routeIs('admin.inventory.*')],
         ['label' => 'Suppliers',   'route' => 'admin.suppliers.index', 'icon' => 'truck',   'active' => request()->routeIs('admin.suppliers.*')],
+        ['label' => 'Purchases',   'route' => 'admin.purchases.index', 'icon' => 'truck',   'active' => request()->routeIs('admin.purchases.*')],
+        ['label' => 'Receipts',    'route' => 'admin.receipts.index',  'icon' => 'truck',   'active' => request()->routeIs('admin.receipts.*')],
         ['label' => 'Expenses',    'route' => 'admin.expenses.index',  'icon' => 'banknotes', 'active' => request()->routeIs('admin.expenses.*')],
         ['section' => 'Insights'],
         ['label' => 'Reports',     'route' => 'admin.reports.index', 'icon' => 'chart-bar', 'active' => request()->routeIs('admin.reports.*')],
