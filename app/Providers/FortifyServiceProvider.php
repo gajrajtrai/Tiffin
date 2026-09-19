@@ -4,8 +4,10 @@ namespace App\Providers;
 
 use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetUserPassword;
+use App\Models\User;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
@@ -13,36 +15,41 @@ use Laravel\Fortify\Fortify;
 
 class FortifyServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     */
     public function register(): void
     {
-        //
+        $this->app->singleton(
+            \Laravel\Fortify\Contracts\LoginResponse::class,
+            \App\Http\Responses\LoginResponse::class,
+        );
     }
 
-    /**
-     * Bootstrap any application services.
-     */
     public function boot(): void
     {
         $this->configureActions();
         $this->configureViews();
+        $this->configureAuthentication();
+        $this->configureRedirects();
         $this->configureRateLimiting();
     }
 
-    /**
-     * Configure Fortify actions.
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | Fortify actions
+    |--------------------------------------------------------------------------
+    */
+
     private function configureActions(): void
     {
         Fortify::resetUserPasswordsUsing(ResetUserPassword::class);
         Fortify::createUsersUsing(CreateNewUser::class);
     }
 
-    /**
-     * Configure Fortify views.
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | Fortify views
+    |--------------------------------------------------------------------------
+    */
+
     private function configureViews(): void
     {
         Fortify::loginView(fn () => view('pages::auth.login'));
@@ -54,9 +61,78 @@ class FortifyServiceProvider extends ServiceProvider
         Fortify::requestPasswordResetLinkView(fn () => view('pages::auth.forgot-password'));
     }
 
-    /**
-     * Configure rate limiting.
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | Authentication
+    |--------------------------------------------------------------------------
+    |
+    | Accept either a Bhutanese mobile number OR an email address as the
+    | login identifier. Mobile takes priority. Suspended accounts are
+    | rejected silently to avoid leaking account state.
+    |
+    */
+
+    private function configureAuthentication(): void
+    {
+        Fortify::authenticateUsing(function (Request $request) {
+            $identifier = trim((string) $request->input('email'));
+            $password   = (string) $request->input('password');
+
+            if ($identifier === '' || $password === '') {
+                return null;
+            }
+
+            // Normalise Bhutanese mobile format: 17111101 → +97517111101
+            $mobileCandidate = $identifier;
+            if (preg_match('/^\d{8}$/', $identifier)) {
+                $mobileCandidate = '+975'.$identifier;
+            } elseif (preg_match('/^975\d{8}$/', $identifier)) {
+                $mobileCandidate = '+'.$identifier;
+            }
+
+            $user = User::query()
+                ->where('mobile', $mobileCandidate)
+                ->orWhere('email', $identifier)
+                ->first();
+
+            if (! $user) {
+                return null;
+            }
+
+            if (! Hash::check($password, $user->password)) {
+                return null;
+            }
+
+            if ($user->status !== 'active') {
+                return null;
+            }
+
+            return $user;
+        });
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Post-login redirects
+    |--------------------------------------------------------------------------
+    |
+    | Staff go to the admin dashboard. Customers go to their wallet.
+    | (Wallet page is built in Phase 10.3 — for now it's a placeholder.)
+    |
+    */
+
+    private function configureRedirects(): void
+    {
+        // Login redirect is handled by App\Http\Responses\LoginResponse,
+        // bound in register() above. Nothing to do here.
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Rate limiting
+    |--------------------------------------------------------------------------
+    */
+
     private function configureRateLimiting(): void
     {
         RateLimiter::for('two-factor', function (Request $request) {
@@ -64,7 +140,9 @@ class FortifyServiceProvider extends ServiceProvider
         });
 
         RateLimiter::for('login', function (Request $request) {
-            $throttleKey = Str::transliterate(Str::lower($request->input(Fortify::username())).'|'.$request->ip());
+            $throttleKey = Str::transliterate(
+                Str::lower($request->input(Fortify::username())).'|'.$request->ip()
+            );
 
             return Limit::perMinute(5)->by($throttleKey);
         });
