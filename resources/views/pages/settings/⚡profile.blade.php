@@ -1,6 +1,5 @@
 <?php
 
-use App\Concerns\ProfileValidationRules;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Flux\Flux;
 use Illuminate\Support\Facades\Auth;
@@ -10,28 +9,34 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 
 new #[Title('Profile settings')] class extends Component {
-    use ProfileValidationRules;
-
     public string $name = '';
-    public string $email = '';
+    public ?string $email = null;
+    public string $mobile = '';
 
-    /**
-     * Mount the component.
-     */
     public function mount(): void
     {
-        $this->name = Auth::user()->name;
-        $this->email = Auth::user()->email;
+        $user = Auth::user();
+        $this->name = (string) $user->name;
+        $this->email = $user->email;
+        $this->mobile = (string) ($user->mobile ?? '');
     }
 
-    /**
-     * Update the profile information for the currently authenticated user.
-     */
     public function updateProfileInformation(): void
     {
         $user = Auth::user();
 
-        $validated = $this->validate($this->profileRules($user->id));
+        $validated = $this->validate([
+            'name'   => ['required', 'string', 'max:255'],
+            'email'  => ['nullable', 'string', 'email', 'max:255', 'unique:users,email,'.$user->id],
+            'mobile' => ['nullable', 'string', 'regex:/^\d{8}$/', 'unique:users,mobile,'.$user->id],
+        ], [
+            'mobile.regex' => 'Mobile must be 8 digits (e.g. 17111101).',
+            'mobile.unique' => 'This mobile number is already registered.',
+        ]);
+
+        // Normalise empty strings to null for nullable columns
+        $validated['email'] = $validated['email'] ?: null;
+        $validated['mobile'] = $validated['mobile'] ?: null;
 
         $user->fill($validated);
 
@@ -44,28 +49,25 @@ new #[Title('Profile settings')] class extends Component {
         Flux::toast(variant: 'success', text: __('Profile updated.'));
     }
 
-    /**
-     * Send an email verification notification to the current user.
-     */
     public function resendVerificationNotification(): void
     {
         $user = Auth::user();
 
         if ($user->hasVerifiedEmail()) {
             $this->redirectIntended(default: route('dashboard', absolute: false));
-
             return;
         }
 
         $user->sendEmailVerificationNotification();
-
         Session::flash('status', 'verification-link-sent');
     }
 
     #[Computed]
     public function hasUnverifiedEmail(): bool
     {
-        return Auth::user() instanceof MustVerifyEmail && ! Auth::user()->hasVerifiedEmail();
+        return Auth::user() instanceof MustVerifyEmail
+            && Auth::user()->email !== null
+            && ! Auth::user()->hasVerifiedEmail();
     }
 
     #[Computed]
@@ -81,18 +83,28 @@ new #[Title('Profile settings')] class extends Component {
 
     <flux:heading level="2" class="sr-only">{{ __('Profile settings') }}</flux:heading>
 
-    <x-pages::settings.layout :heading="__('Profile')" :subheading="__('Update your name and email address')">
+    <x-pages::settings.layout :heading="__('Profile')" :subheading="__('Update your name, mobile, and email')">
         <form wire:submit="updateProfileInformation" class="my-6 w-full space-y-6">
             <flux:input wire:model="name" :label="__('Name')" type="text" required autofocus autocomplete="name" />
 
+            <flux:input wire:model="mobile"
+                        :label="__('Mobile Number')"
+                        type="text"
+                        placeholder="17123456"
+                        autocomplete="tel"
+                        description="8 digits, no country code" />
+
             <div>
-                <flux:input wire:model="email" :label="__('Email')" type="email" required autocomplete="email" />
+                <flux:input wire:model="email"
+                            :label="__('Email (optional)')"
+                            type="email"
+                            autocomplete="email"
+                            description="Optional — you can sign in with your mobile number" />
 
                 @if ($this->hasUnverifiedEmail)
                     <div>
                         <flux:text class="mt-4">
                             {{ __('Your email address is unverified.') }}
-
                             <flux:link class="text-sm cursor-pointer" wire:click.prevent="resendVerificationNotification">
                                 {{ __('Click here to re-send the verification email.') }}
                             </flux:link>
@@ -113,7 +125,6 @@ new #[Title('Profile settings')] class extends Component {
                         {{ __('Save') }}
                     </flux:button>
                 </div>
-
             </div>
         </form>
 

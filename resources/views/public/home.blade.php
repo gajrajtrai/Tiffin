@@ -18,7 +18,7 @@
             </p>
 
             <div class="mt-6 flex flex-wrap gap-3">
-                <a href="{{ url('/menu') }}"
+                <a href="{{ route('menu.index') }}"
                    class="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-600">
                     View today's menu
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -1,33 +1,40 @@
 <x-layouts::auth :title="__('Register')">
     <div class="flex flex-col gap-6">
-        <x-auth-header :title="__('Create an account')" :description="__('Enter your details below to create your account')" />
+        <x-auth-header
+            :title="__('Create your account')"
+            :description="__('Sign up with your mobile number — no email required')" />
 
         <!-- Session Status -->
         <x-auth-session-status class="text-center" :status="session('status')" />
 
         <form method="POST" action="{{ route('register.store') }}" class="flex flex-col gap-6">
             @csrf
+
             <!-- Name -->
             <flux:input
                 name="name"
-                :label="__('Name')"
+                :label="__('Full Name')"
                 :value="old('name')"
                 type="text"
                 required
                 autofocus
                 autocomplete="name"
-                :placeholder="__('Full name')"
+                :placeholder="__('e.g. Sonam Wangchuk')"
             />
 
-            <!-- Email Address -->
+            <!-- Mobile -->
             <flux:input
-                name="email"
-                :label="__('Email address')"
-                :value="old('email')"
-                type="email"
+                name="mobile"
+                :label="__('Mobile Number')"
+                :value="old('mobile')"
+                type="tel"
+                inputmode="numeric"
+                pattern="[0-9]{8}"
+                maxlength="8"
                 required
-                autocomplete="email"
-                placeholder="email@example.com"
+                autocomplete="tel"
+                placeholder="17123456"
+                description="8 digits, no country code"
             />
 
             <!-- Password -->
@@ -45,7 +52,7 @@
             <!-- Confirm Password -->
             <flux:input
                 name="password_confirmation"
-                :label="__('Confirm password')"
+                :label="__('Confirm Password')"
                 type="password"
                 required
                 autocomplete="new-password"

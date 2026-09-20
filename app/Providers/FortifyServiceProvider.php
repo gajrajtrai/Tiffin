@@ -122,8 +122,31 @@ class FortifyServiceProvider extends ServiceProvider
 
     private function configureRedirects(): void
     {
-        // Login redirect is handled by App\Http\Responses\LoginResponse,
-        // bound in register() above. Nothing to do here.
+        // Login redirect is handled by App\Http\Responses\LoginResponse.
+
+        Fortify::redirects('register', function () {
+            $user = auth()->user();
+
+            if (! $user) {
+                return '/';
+            }
+
+            if ($user->isStaff()) {
+                return route('admin.dashboard');
+            }
+
+            return url('/wallet');
+        });
+
+        Fortify::redirects('email-verification', function () {
+            $user = auth()->user();
+
+            if ($user?->isStaff()) {
+                return route('admin.dashboard');
+            }
+
+            return url('/wallet');
+        });
     }
 
     /*

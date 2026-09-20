@@ -1,9 +1,11 @@
 @php
+    $user = auth()->user();
+
     $items = [
         ['label' => 'Home',    'url' => url('/'),                'icon' => 'home',    'active' => request()->is('/')],
-        ['label' => 'Menu',    'url' => url('/menu'),            'icon' => 'book',    'active' => request()->is('menu')],
+        ['label' => 'Menu',    'url' => route('menu.index'),     'icon' => 'book',    'active' => request()->is('menu*')],
         ['label' => 'Orders',  'url' => url('/orders'),          'icon' => 'receipt', 'active' => request()->is('orders*')],
-        ['label' => 'Wallet',  'url' => url('/wallet'),          'icon' => 'banknotes', 'active' => request()->is('wallet')],
+        ['label' => 'Wallet',  'url' => route('wallet.index'),   'icon' => 'banknotes', 'active' => request()->is('wallet*')],
         ['label' => 'Profile', 'url' => url('/settings/profile'), 'icon' => 'users',   'active' => request()->is('settings*')],
     ];
 @endphp
