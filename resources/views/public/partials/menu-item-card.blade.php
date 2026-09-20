@@ -1,10 +1,17 @@
-<div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md">
+@php
+    $isAvailableToday = $selectable ?? false;
+    $isSelected = $selected ?? false;
+@endphp
+
+<div @class([
+    'overflow-hidden rounded-xl border-2 bg-white shadow-sm transition',
+    'border-brand-500 ring-1 ring-brand-200' => $isSelected,
+    'border-slate-200 hover:shadow-md' => ! $isSelected,
+])>
     {{-- Image --}}
-    <div class="aspect-[16/10] w-full overflow-hidden bg-slate-100">
+    <div class="relative aspect-[16/10] w-full overflow-hidden bg-slate-100">
         @if ($item->image_url)
-            <img src="{{ $item->image_url }}"
-                 alt="{{ $item->name }}"
-                 class="h-full w-full object-cover" />
+            <img src="{{ $item->image_url }}" alt="{{ $item->name }}" class="h-full w-full object-cover" />
         @else
             <div class="flex h-full w-full items-center justify-center text-slate-300">
                 <svg class="h-10 w-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -12,6 +19,14 @@
                 </svg>
             </div>
         @endif
+
+        @unless ($isAvailableToday)
+            <div class="absolute inset-0 flex items-center justify-center bg-slate-900/60">
+                <span class="rounded-full bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-slate-700">
+                    Not available today
+                </span>
+            </div>
+        @endunless
     </div>
 
     {{-- Body --}}
@@ -34,11 +49,29 @@
             </div>
 
             @auth
-                <button type="button"
-                        wire:click="startOrder({{ $item->id }})"
-                        class="rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-brand-600">
-                    Order
-                </button>
+                @if ($isCustomer && $isAvailableToday)
+                    @if ($isSelected)
+                        <button type="button"
+                                wire:click="toggleItem({{ $item->id }})"
+                                wire:loading.attr="disabled"
+                                class="inline-flex items-center gap-1 rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-600">
+                            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+                            </svg>
+                            Added
+                        </button>
+                    @else
+                        <button type="button"
+                                wire:click="toggleItem({{ $item->id }})"
+                                wire:loading.attr="disabled"
+                                class="inline-flex items-center gap-1 rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-brand-600">
+                            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
+                            </svg>
+                            Add
+                        </button>
+                    @endif
+                @endif
             @endauth
 
             @guest

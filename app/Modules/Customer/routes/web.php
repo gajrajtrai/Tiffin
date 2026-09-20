@@ -1,5 +1,7 @@
 <?php
 
+use App\Modules\Customer\Http\Livewire\CustomerOrderDetail;
+use App\Modules\Customer\Http\Livewire\CustomerOrdersIndex;
 use App\Modules\Customer\Http\Livewire\MenuBrowse;
 use App\Modules\Customer\Http\Livewire\WalletIndex;
 use Illuminate\Support\Facades\Route;
@@ -8,10 +10,6 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 | Customer (Public Site) Module Routes
 |--------------------------------------------------------------------------
-|
-| These routes are loaded via a service provider, so they need the "web"
-| middleware group explicitly for session, cookies, CSRF, and auth().
-|
 */
 
 Route::middleware(['web'])->group(function () {
@@ -24,5 +22,7 @@ Route::middleware(['web'])->group(function () {
 
     Route::middleware(['auth'])->group(function () {
         Route::get('/wallet', WalletIndex::class)->name('wallet.index');
+        Route::get('/orders', CustomerOrdersIndex::class)->name('orders.index');
+        Route::get('/orders/{order}', CustomerOrderDetail::class)->name('orders.show');
     });
 });

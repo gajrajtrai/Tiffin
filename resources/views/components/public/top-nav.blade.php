@@ -35,6 +35,14 @@
                 Menu
             </a>
             @if ($user && $user->hasRole('Customer'))
+                <a href="{{ route('orders.index') }}"
+                   @class([
+                       'rounded-lg px-3 py-1.5 text-sm font-medium transition',
+                       'bg-brand-50 text-brand-700' => request()->is('orders*'),
+                       'text-slate-600 hover:bg-slate-100 hover:text-slate-900' => ! request()->is('orders*'),
+                   ])>
+                    Orders
+                </a>
                 <a href="{{ route('wallet.index') }}"
                    @class([
                        'rounded-lg px-3 py-1.5 text-sm font-medium transition',
