@@ -2,11 +2,14 @@
 
 namespace App\Modules\Core\Models;
 
+use App\Concerns\LogsActivityChanges;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
 
 class Setting extends Model
 {
+    use LogsActivityChanges;
+
     protected $fillable = [
         'key', 'value', 'type', 'group', 'label', 'description',
     ];
@@ -15,6 +18,11 @@ class Setting extends Model
     {
         static::saved(fn () => Cache::forget('settings.all'));
         static::deleted(fn () => Cache::forget('settings.all'));
+    }
+
+    protected function getActivitylogIdentifier(): ?string
+    {
+        return $this->key;
     }
 
     /**
@@ -59,7 +67,10 @@ class Setting extends Model
             ['key' => $key],
             ['value' => json_encode($value), 'type' => 'json']
         );
+
+        Cache::forget('settings.all');
     }
+
     /**
      * Write a setting with an explicit type. Unlike set(), this
      * always updates the type column — useful when the UI edits
@@ -77,6 +88,7 @@ class Setting extends Model
 
         Cache::forget('settings.all');
     }
+
     /**
      * Return the value cast according to its declared type.
      */

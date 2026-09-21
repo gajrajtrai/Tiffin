@@ -2,6 +2,7 @@
 
 namespace App\Modules\Supplier\Models;
 
+use App\Concerns\LogsActivityChanges;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -10,6 +11,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Supplier extends Model
 {
     use SoftDeletes;
+    use LogsActivityChanges;
 
     protected $fillable = [
         'name', 'contact_person', 'mobile', 'email',
@@ -22,6 +24,11 @@ class Supplier extends Model
         return [
             'is_active' => 'boolean',
         ];
+    }
+
+    protected function getActivitylogIdentifier(): ?string
+    {
+        return $this->name;
     }
 
     /*

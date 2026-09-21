@@ -2,6 +2,7 @@
 
 namespace App\Modules\Menu\Models;
 
+use App\Concerns\LogsActivityChanges;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -15,6 +16,7 @@ class MenuItem extends Model implements HasMedia
 {
     use SoftDeletes;
     use InteractsWithMedia;
+    use LogsActivityChanges;
 
     public const MEDIA_IMAGE = 'image';
 
@@ -63,6 +65,11 @@ class MenuItem extends Model implements HasMedia
         }
 
         return $slug;
+    }
+
+    protected function getActivitylogIdentifier(): ?string
+    {
+        return $this->name;
     }
 
     /*
@@ -158,7 +165,6 @@ class MenuItem extends Model implements HasMedia
     public function getImageUrlAttribute(): ?string
     {
         if ($this->hasMedia(self::MEDIA_IMAGE)) {
-            // Use the original file — the 'thumb' conversion requires a queue worker
             return $this->getFirstMediaUrl(self::MEDIA_IMAGE);
         }
 

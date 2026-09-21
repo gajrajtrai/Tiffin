@@ -2,6 +2,7 @@
 
 namespace App\Modules\Payment\Models;
 
+use App\Concerns\LogsActivityChanges;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -13,6 +14,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 class PaymentProof extends Model implements HasMedia
 {
     use InteractsWithMedia;
+    use LogsActivityChanges;
 
     public const STATUS_PENDING  = 'pending';
     public const STATUS_APPROVED = 'approved';
@@ -32,6 +34,11 @@ class PaymentProof extends Model implements HasMedia
             'claimed_amount' => 'decimal:2',
             'reviewed_at'    => 'datetime',
         ];
+    }
+
+    protected function getActivitylogIdentifier(): ?string
+    {
+        return '#'.$this->id.' ('.$this->status.')';
     }
 
     /*

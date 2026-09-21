@@ -2,6 +2,7 @@
 
 namespace App\Modules\Supplier\Models;
 
+use App\Concerns\LogsActivityChanges;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -11,6 +12,8 @@ use Illuminate\Support\Carbon;
 
 class PurchaseOrder extends Model
 {
+    use LogsActivityChanges;
+
     public const STATUS_DRAFT              = 'draft';
     public const STATUS_SENT               = 'sent';
     public const STATUS_PARTIALLY_RECEIVED = 'partially_received';
@@ -59,6 +62,11 @@ class PurchaseOrder extends Model
         } while (static::where('po_number', $number)->exists() && $attempt < 100);
 
         return $number;
+    }
+
+    protected function getActivitylogIdentifier(): ?string
+    {
+        return $this->po_number;
     }
 
     /*
@@ -158,19 +166,16 @@ class PurchaseOrder extends Model
         };
     }
 
-    /**
-     * Recompute the PO status based on received quantities.
-     */
     public function recalculateStatus(): void
     {
         if ($this->status === self::STATUS_CANCELLED) {
             return;
         }
 
-		$this->load('items');
+        $this->load('items');
 
-        $allReceived  = $this->items->every(fn ($i) => $i->quantity_received >= $i->quantity_ordered);
-        $anyReceived  = $this->items->some(fn ($i) => $i->quantity_received > 0);
+        $allReceived = $this->items->every(fn ($i) => $i->quantity_received >= $i->quantity_ordered);
+        $anyReceived = $this->items->some(fn ($i) => $i->quantity_received > 0);
 
         $this->status = match (true) {
             $allReceived => self::STATUS_RECEIVED,

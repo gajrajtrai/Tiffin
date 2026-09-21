@@ -136,4 +136,8 @@ Route::middleware(['web', 'auth', 'staff'])
         // Settings
         Route::get('/settings', \App\Modules\Admin\Http\Livewire\SettingsIndex::class)
             ->middleware('can:settings.view')->name('settings.index');
+
+        // Audit Log
+        Route::get('/audit', \App\Modules\Admin\Http\Livewire\AuditLogIndex::class)
+            ->middleware('can:audit.view')->name('audit.index');
     });

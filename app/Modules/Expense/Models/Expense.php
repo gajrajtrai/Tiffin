@@ -2,6 +2,7 @@
 
 namespace App\Modules\Expense\Models;
 
+use App\Concerns\LogsActivityChanges;
 use App\Models\User;
 use App\Modules\Supplier\Models\GoodsReceipt;
 use App\Modules\Supplier\Models\Supplier;
@@ -16,6 +17,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 class Expense extends Model implements HasMedia
 {
     use InteractsWithMedia;
+    use LogsActivityChanges;
 
     public const METHOD_CASH          = 'cash';
     public const METHOD_BANK_TRANSFER = 'bank_transfer';
@@ -67,6 +69,11 @@ class Expense extends Model implements HasMedia
         } while (static::where('expense_number', $number)->exists() && $attempt < 100);
 
         return $number;
+    }
+
+    protected function getActivitylogIdentifier(): ?string
+    {
+        return $this->expense_number;
     }
 
     /*
@@ -191,7 +198,6 @@ class Expense extends Model implements HasMedia
 
     public function canBeDeleted(): bool
     {
-        // Only drafts with no receipt and no GR link can be hard-deleted
         return ! $this->isGrLinked()
             && $this->status === self::STATUS_DRAFT
             && ! $this->hasMedia(self::MEDIA_RECEIPT);

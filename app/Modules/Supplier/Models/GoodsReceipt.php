@@ -2,15 +2,19 @@
 
 namespace App\Modules\Supplier\Models;
 
+use App\Concerns\LogsActivityChanges;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 
 class GoodsReceipt extends Model
 {
+    use LogsActivityChanges;
+
     public const STATUS_DRAFT     = 'draft';
     public const STATUS_CONFIRMED = 'confirmed';
 
@@ -56,6 +60,11 @@ class GoodsReceipt extends Model
         return $number;
     }
 
+    protected function getActivitylogIdentifier(): ?string
+    {
+        return $this->receipt_number;
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Relationships
@@ -81,10 +90,12 @@ class GoodsReceipt extends Model
     {
         return $this->hasMany(GoodsReceiptItem::class);
     }
-    public function expense(): \Illuminate\Database\Eloquent\Relations\HasOne
+
+    public function expense(): HasOne
     {
         return $this->hasOne(\App\Modules\Expense\Models\Expense::class, 'goods_receipt_id');
     }
+
     /*
     |--------------------------------------------------------------------------
     | Scopes
@@ -125,6 +136,16 @@ class GoodsReceipt extends Model
             default                => ucfirst($this->status),
         };
     }
+
+    public function statusVariant(): string
+    {
+        return match ($this->status) {
+            self::STATUS_DRAFT     => 'warning',
+            self::STATUS_CONFIRMED => 'success',
+            default                => 'slate',
+        };
+    }
+
     public function paymentMethodLabel(): string
     {
         return match ($this->payment_method) {
@@ -135,15 +156,8 @@ class GoodsReceipt extends Model
             default         => ucfirst((string) $this->payment_method),
         };
     }
-    public function statusVariant(): string
-    {
-        return match ($this->status) {
-            self::STATUS_DRAFT     => 'warning',
-            self::STATUS_CONFIRMED => 'success',
-            default                => 'slate',
-        };
-    }
-	    /**
+
+    /**
      * Recompute header totals from the current line items.
      * Called automatically when confirming; call manually after editing items.
      */

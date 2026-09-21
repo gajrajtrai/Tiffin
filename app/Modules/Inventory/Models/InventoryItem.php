@@ -2,6 +2,7 @@
 
 namespace App\Modules\Inventory\Models;
 
+use App\Concerns\LogsActivityChanges;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -10,6 +11,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class InventoryItem extends Model
 {
     use SoftDeletes;
+    use LogsActivityChanges;
 
     protected $fillable = [
         'name', 'sku', 'category', 'unit',
@@ -25,6 +27,11 @@ class InventoryItem extends Model
             'unit_cost'     => 'decimal:2',
             'is_active'     => 'boolean',
         ];
+    }
+
+    protected function getActivitylogIdentifier(): ?string
+    {
+        return $this->name;
     }
 
     /*
@@ -100,7 +107,6 @@ class InventoryItem extends Model
     public function displayStock(): string
     {
         $n = (float) $this->current_stock;
-        // Show decimals only when meaningful
         return ($n == (int) $n ? (int) $n : number_format($n, 3)) . ' ' . $this->unit;
     }
 }

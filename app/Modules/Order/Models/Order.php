@@ -2,6 +2,7 @@
 
 namespace App\Modules\Order\Models;
 
+use App\Concerns\LogsActivityChanges;
 use App\Models\User;
 use App\Modules\Payment\Models\WalletTransaction;
 use Illuminate\Database\Eloquent\Builder;
@@ -12,6 +13,8 @@ use Illuminate\Support\Carbon;
 
 class Order extends Model
 {
+    use LogsActivityChanges;
+
     // Status flow
     public const STATUS_PENDING    = 'pending';
     public const STATUS_CONFIRMED  = 'confirmed';
@@ -67,6 +70,17 @@ class Order extends Model
         } while (static::where('order_number', $number)->exists() && $attempt < 100);
 
         return $number;
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Activity log identifier — used by the audit log viewer
+    |--------------------------------------------------------------------------
+    */
+
+    protected function getActivitylogIdentifier(): ?string
+    {
+        return $this->order_number;
     }
 
     /*
