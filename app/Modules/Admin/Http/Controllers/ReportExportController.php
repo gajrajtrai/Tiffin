@@ -230,6 +230,7 @@ class ReportExportController
             Expense::query()
                 ->with(['category', 'supplier'])
                 ->whereBetween('expense_date', [$from, $to])
+                ->whereNull('voided_at')
                 ->orderBy('expense_date')
                 ->chunk(500, function ($expenses) use ($out) {
                     foreach ($expenses as $exp) {

@@ -195,7 +195,16 @@ class DemoSeeder extends Seeder
         ]);
 
         // ─── 8. Expense categories + expenses ─────────────────────
-        $rawCat  = ExpenseCategory::create(['name' => 'Raw Materials', 'color' => 'brand', 'sort_order' => 1]);
+        $rawCat  = ExpenseCategory::firstOrCreate(
+            ['slug' => 'raw-materials'],
+            [
+                'name'        => 'Raw Materials',
+                'color'       => 'brand',
+                'description' => 'Auto-generated from goods receipts. Do not delete.',
+                'sort_order'  => 1,
+                'is_active'   => true,
+            ]
+        );		
         $utilCat = ExpenseCategory::create(['name' => 'Utilities',     'color' => 'sky',   'sort_order' => 2]);
         ExpenseCategory::create(['name' => 'Rent',           'color' => 'rose',   'sort_order' => 3]);
         ExpenseCategory::create(['name' => 'Gas',            'color' => 'amber',  'sort_order' => 4]);

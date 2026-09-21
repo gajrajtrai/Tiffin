@@ -60,7 +60,23 @@ class Setting extends Model
             ['value' => json_encode($value), 'type' => 'json']
         );
     }
+    /**
+     * Write a setting with an explicit type. Unlike set(), this
+     * always updates the type column — useful when the UI edits
+     * a value whose type matters (int, decimal, etc.).
+     */
+    public static function setWithType(string $key, mixed $value, string $type = 'string'): void
+    {
+        static::updateOrCreate(
+            ['key' => $key],
+            [
+                'value' => is_array($value) ? json_encode($value) : (string) $value,
+                'type'  => $type,
+            ]
+        );
 
+        Cache::forget('settings.all');
+    }
     /**
      * Return the value cast according to its declared type.
      */

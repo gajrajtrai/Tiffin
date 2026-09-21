@@ -33,6 +33,7 @@ class Expense extends Model implements HasMedia
         'goods_receipt_id', 'expense_date', 'description',
         'amount', 'payment_method', 'payment_reference',
         'status', 'recorded_by', 'notes',
+        'voided_at', 'voided_by', 'void_reason',
     ];
 
     protected function casts(): array
@@ -40,6 +41,7 @@ class Expense extends Model implements HasMedia
         return [
             'expense_date' => 'date',
             'amount'       => 'decimal:2',
+            'voided_at'    => 'datetime',
         ];
     }
 
@@ -93,6 +95,11 @@ class Expense extends Model implements HasMedia
         return $this->belongsTo(User::class, 'recorded_by');
     }
 
+    public function voidedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'voided_by');
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Media
@@ -141,6 +148,21 @@ class Expense extends Model implements HasMedia
         return $q->where('status', self::STATUS_PAID);
     }
 
+    public function scopeActive(Builder $q): Builder
+    {
+        return $q->whereNull('voided_at');
+    }
+
+    public function scopeVoided(Builder $q): Builder
+    {
+        return $q->whereNotNull('voided_at');
+    }
+
+    public function scopeGrLinked(Builder $q): Builder
+    {
+        return $q->whereNotNull('goods_receipt_id');
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Helpers
@@ -152,8 +174,35 @@ class Expense extends Model implements HasMedia
         return $this->status === self::STATUS_PAID;
     }
 
+    public function isVoided(): bool
+    {
+        return $this->voided_at !== null;
+    }
+
+    public function isGrLinked(): bool
+    {
+        return $this->goods_receipt_id !== null;
+    }
+
+    public function canBeVoided(): bool
+    {
+        return ! $this->isVoided() && ! $this->isGrLinked();
+    }
+
+    public function canBeDeleted(): bool
+    {
+        // Only drafts with no receipt and no GR link can be hard-deleted
+        return ! $this->isGrLinked()
+            && $this->status === self::STATUS_DRAFT
+            && ! $this->hasMedia(self::MEDIA_RECEIPT);
+    }
+
     public function statusLabel(): string
     {
+        if ($this->isVoided()) {
+            return 'Voided';
+        }
+
         return match ($this->status) {
             self::STATUS_DRAFT    => 'Draft',
             self::STATUS_APPROVED => 'Approved',
@@ -164,6 +213,10 @@ class Expense extends Model implements HasMedia
 
     public function statusVariant(): string
     {
+        if ($this->isVoided()) {
+            return 'danger';
+        }
+
         return match ($this->status) {
             self::STATUS_DRAFT    => 'warning',
             self::STATUS_APPROVED => 'info',

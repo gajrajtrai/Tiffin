@@ -11,10 +11,14 @@ use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use App\Concerns\HasRateLimiting;
 
 #[Layout('components.layouts.public')]
+
 class MenuBrowse extends Component
 {
+    use HasRateLimiting;
+
     #[Url(as: 'view', except: 'today')]
     public string $view = 'today';
 
@@ -98,6 +102,17 @@ class MenuBrowse extends Component
     {
         if (! auth()->check() || ! auth()->user()->hasRole('Customer')) {
             $this->orderError = 'Please sign in as a customer to place an order.';
+            return null;
+        }
+
+        try {
+            $this->rateLimit(
+                key: 'place-order:'.auth()->id(),
+                maxAttempts: 5,
+                decaySeconds: 3600,
+            );
+        } catch (\Throwable $e) {
+            $this->orderError = $e->getMessage();
             return null;
         }
 

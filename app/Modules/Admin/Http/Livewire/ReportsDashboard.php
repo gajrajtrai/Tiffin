@@ -127,6 +127,7 @@ class ReportsDashboard extends Component
         */
         $expenseTotal = (float) Expense::query()
             ->whereBetween('expense_date', [$fromStr, $toStr])
+            ->whereNull('voided_at')
             ->sum('amount');
 
         $netProfit = $revenue - $expenseTotal;

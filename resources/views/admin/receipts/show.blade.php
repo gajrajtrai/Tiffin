@@ -62,6 +62,33 @@
                     </div>
                 @endif
             </div>
+
+            @can('purchase.edit')
+                <div class="w-full max-w-xs space-y-3">
+                    <div>
+                        <label class="mb-1 block text-xs font-medium text-slate-600">Payment Method</label>
+                        <select wire:model.live="paymentMethod"
+                                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500">
+                            <option value="cash">Cash</option>
+                            <option value="bank_transfer">Bank Transfer</option>
+                            <option value="cheque">Cheque</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-xs font-medium text-slate-600">Payment Reference</label>
+                        <input type="text" wire:model.live.debounce.500ms="paymentReference"
+                               placeholder="optional"
+                               class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500" />
+                    </div>
+                    @if ($gr->isConfirmed() && $gr->expense)
+                        <p class="text-[11px] text-slate-500">
+                            Synced to expense
+                            <span class="font-mono text-brand-600">{{ $gr->expense->expense_number }}</span>
+                        </p>
+                    @endif
+                </div>
+            @endcan
         </div>
 
         @if ($gr->isDraft())

@@ -12,7 +12,7 @@ class SettingsSeeder extends Seeder
         $settings = [
             // ─── General ───────────────────────────────────────────────
             ['restaurant_name',   'Tamkulay Tiffins',       'string',  'general', 'Restaurant Name'],
-            ['restaurant_mobile', '+975 17 123 456',        'string',  'general', 'Contact Mobile'],
+            ['restaurant_mobile', '+975 17123456',          'string',  'general', 'Contact Mobile'],
             ['restaurant_address','Near College Gate, Thimphu', 'string', 'general', 'Address'],
             ['currency',          'Nu.',                    'string',  'general', 'Currency Symbol'],
 
@@ -35,6 +35,22 @@ class SettingsSeeder extends Seeder
             // ─── Tax ───────────────────────────────────────────────────
             ['tax_label', 'GST', 'string',  'payment', 'Tax Label'],
             ['tax_rate',  5,     'decimal', 'payment', 'Tax Rate (%)'],
+			
+            // ─── Landing Page ──────────────────────────────────────────
+            [
+                'landing_hero_title',
+                'Fresh lunch from Tamkulay Tiffins',
+                'string',
+                'landing',
+                'Hero headline',
+            ],
+            [
+                'landing_hero_subtitle',
+                'Home-style meals delivered to your college gate or ready for pickup at our counter. Prepaid wallet, no queues, no fuss.',
+                'string',
+                'landing',
+                'Hero subtitle',
+            ],
         ];
 
         foreach ($settings as [$key, $value, $type, $group, $label]) {

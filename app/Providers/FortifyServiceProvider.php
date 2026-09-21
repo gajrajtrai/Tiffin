@@ -157,18 +157,49 @@ class FortifyServiceProvider extends ServiceProvider
 
     private function configureRateLimiting(): void
     {
+        // Two-factor challenge — tight window, session-based key
         RateLimiter::for('two-factor', function (Request $request) {
             return Limit::perMinute(5)->by($request->session()->get('login.id'));
         });
 
+        // Login — per username+IP so distributed attempts are still caught
         RateLimiter::for('login', function (Request $request) {
             $throttleKey = Str::transliterate(
                 Str::lower($request->input(Fortify::username())).'|'.$request->ip()
             );
 
-            return Limit::perMinute(5)->by($throttleKey);
+            return Limit::perMinute(5)
+                ->by($throttleKey)
+                ->response(function () {
+                    return back()->withErrors([
+                        'email' => 'Too many login attempts. Please wait a minute and try again.',
+                    ]);
+                });
         });
 
+        // Registration — rare action, tighter limit
+        RateLimiter::for('register', function (Request $request) {
+            return Limit::perHour(5)
+                ->by($request->ip())
+                ->response(function () {
+                    return back()->withErrors([
+                        'mobile' => 'Too many registration attempts. Please try again later.',
+                    ]);
+                });
+        });
+
+        // Password reset requests — prevents email bombing
+        RateLimiter::for('password-reset', function (Request $request) {
+            return Limit::perHour(3)
+                ->by($request->ip())
+                ->response(function () {
+                    return back()->withErrors([
+                        'email' => 'Too many password reset requests. Please try again later.',
+                    ]);
+                });
+        });
+
+        // Passkey endpoints — same as before, but slightly clearer key
         RateLimiter::for('passkeys', function (Request $request) {
             $credentialId = $request->input('credential.id');
 

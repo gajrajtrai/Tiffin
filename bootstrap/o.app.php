@@ -3,6 +3,7 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -15,12 +16,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'staff' => \App\Http\Middleware\RedirectCustomersFromAdmin::class,
             'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
         ]);
-
-        // Apply safe security headers to every web request
-        $middleware->web(append: [
-            \App\Http\Middleware\SecurityHeaders::class,
-        ]);
     })
-    ->withExceptions(function (Exceptions $exceptions) {
-        //
+    ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->shouldRenderJsonWhen(
+            fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
+        );
     })->create();

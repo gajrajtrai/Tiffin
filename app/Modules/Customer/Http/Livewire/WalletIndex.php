@@ -4,6 +4,7 @@ namespace App\Modules\Customer\Http\Livewire;
 
 use App\Modules\Core\Models\Setting;
 use App\Modules\Payment\Models\PaymentProof;
+use App\Concerns\HasRateLimiting;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -13,6 +14,7 @@ use Livewire\WithFileUploads;
 class WalletIndex extends Component
 {
     use WithFileUploads;
+    use HasRateLimiting;
 
     public string $claimedAmount = '';
     public string $bankReference = '';
@@ -62,6 +64,18 @@ class WalletIndex extends Component
     public function submit(): void
     {
         $this->validate();
+
+        try {
+            $this->rateLimit(
+                key: 'wallet-topup:'.auth()->id(),
+                maxAttempts: 5,
+                decaySeconds: 3600,
+            );
+        } catch (\Throwable $e) {
+            $this->statusType = 'error';
+            $this->statusMessage = $e->getMessage();
+            return;
+        }
 
         $proof = PaymentProof::create([
             'user_id'        => auth()->id(),

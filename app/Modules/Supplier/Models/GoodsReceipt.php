@@ -17,6 +17,7 @@ class GoodsReceipt extends Model
     protected $fillable = [
         'receipt_number', 'purchase_order_id', 'supplier_id',
         'received_by', 'received_date', 'status',
+        'payment_method', 'payment_reference',
         'subtotal', 'tax', 'total', 'notes', 'confirmed_at',
     ];
 
@@ -80,7 +81,10 @@ class GoodsReceipt extends Model
     {
         return $this->hasMany(GoodsReceiptItem::class);
     }
-
+    public function expense(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(\App\Modules\Expense\Models\Expense::class, 'goods_receipt_id');
+    }
     /*
     |--------------------------------------------------------------------------
     | Scopes
@@ -121,7 +125,16 @@ class GoodsReceipt extends Model
             default                => ucfirst($this->status),
         };
     }
-
+    public function paymentMethodLabel(): string
+    {
+        return match ($this->payment_method) {
+            'cash'          => 'Cash',
+            'bank_transfer' => 'Bank Transfer',
+            'cheque'        => 'Cheque',
+            'other'         => 'Other',
+            default         => ucfirst((string) $this->payment_method),
+        };
+    }
     public function statusVariant(): string
     {
         return match ($this->status) {

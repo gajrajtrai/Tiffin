@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "8ca15fa3dec2cb5246cd1c775ea7ad22",
+    "content-hash": "ad318b4b17ac995088b295c9869c9436",
     "packages": [
         {
             "name": "bacon/bacon-qr-code",
@@ -2894,6 +2894,76 @@
                 }
             ],
             "time": "2026-04-11T18:38:28+00:00"
+        },
+        {
+            "name": "make-dev/laravel-security",
+            "version": "v0.3.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/lets-make-dev/laravel-security.git",
+                "reference": "db02f96f3cf63ad4955bfc3b7aaa82adb267464b"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/lets-make-dev/laravel-security/zipball/db02f96f3cf63ad4955bfc3b7aaa82adb267464b",
+                "reference": "db02f96f3cf63ad4955bfc3b7aaa82adb267464b",
+                "shasum": ""
+            },
+            "require": {
+                "illuminate/console": "^11.0 || ^12.0 || ^13.0",
+                "illuminate/http": "^11.0 || ^12.0 || ^13.0",
+                "illuminate/support": "^11.0 || ^12.0 || ^13.0",
+                "laravel/prompts": "^0.1 || ^0.2 || ^0.3",
+                "php": "^8.2 || ^8.3 || ^8.4 || ^8.5"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "MakeDev\\Security\\SecurityServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "MakeDev\\Security\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Michael Craig",
+                    "email": "m@ke.dev"
+                }
+            ],
+            "description": "Modern security headers for Laravel — turn-key. Strict CSP with per-request nonces and 'strict-dynamic', Subresource Integrity with smart noise filtering, HSTS, Permissions-Policy. An interactive setup wizard asks which third parties you use (GTM, HubSpot, Stripe, reCAPTCHA, and a dozen more) and wires the right directives automatically. First-party violation reporting endpoints, Filament + Livewire + Vite friendly, Vapor-ready. Laravel 11, 12, 13 on PHP 8.2+.",
+            "keywords": [
+                "content-security-policy",
+                "csp",
+                "filament",
+                "hsts",
+                "laravel",
+                "laravel-package",
+                "livewire",
+                "nonce",
+                "permissions-policy",
+                "security",
+                "security-headers",
+                "sri",
+                "strict-csp",
+                "strict-dynamic",
+                "subresource-integrity",
+                "vapor",
+                "xss-protection"
+            ],
+            "support": {
+                "issues": "https://github.com/lets-make-dev/laravel-security/issues",
+                "source": "https://github.com/lets-make-dev/laravel-security/tree/v0.3.0"
+            },
+            "time": "2026-06-17T03:52:45+00:00"
         },
         {
             "name": "markbaker/complex",

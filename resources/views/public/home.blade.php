@@ -1,20 +1,39 @@
-<x-layouts.public title="{{ config('app.name') }} · Fresh Tiffins, Delivered">
+@use('App\Modules\Core\Models\Setting')
+@use('App\Modules\Menu\Models\ServiceDay')
+
+@php
+    $heroTitle    = Setting::get('landing_hero_title', 'Fresh lunch from Tamkulay Tiffins');
+    $heroSubtitle = Setting::get('landing_hero_subtitle', 'Home-style meals delivered to your college gate or ready for pickup at our counter. Prepaid wallet, no queues, no fuss.');
+    $restaurant   = Setting::get('restaurant_name', config('app.name'));
+    $serviceDay   = ServiceDay::forDate(today());
+    $cutoffTime   = $serviceDay->effectiveCutoffTime();
+@endphp
+
+<x-layouts.public title="{{ $restaurant }} · Fresh Tiffins, Delivered">
     {{-- Hero --}}
     <section class="bg-gradient-to-b from-brand-50 to-cream-50">
         <div class="mx-auto max-w-5xl px-4 py-10 sm:py-16">
-            <span class="inline-flex items-center gap-1 rounded-full bg-brand-100 px-3 py-1 text-xs font-medium text-brand-700">
-                <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                </svg>
-                Order cut-off today: 11:00 AM
-            </span>
+            @if ($serviceDay->is_open)
+                <span class="inline-flex items-center gap-1 rounded-full bg-brand-100 px-3 py-1 text-xs font-medium text-brand-700">
+                    <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    Order cut-off today: {{ $cutoffTime }}
+                    @if ($serviceDay->isPastCutoff())
+                        · <span class="font-semibold text-amber-700">Cut-off passed — pickup still available</span>
+                    @endif
+                </span>
+            @else
+                <span class="inline-flex items-center gap-1 rounded-full bg-rose-100 px-3 py-1 text-xs font-medium text-rose-700">
+                    Closed today · Back tomorrow
+                </span>
+            @endif
 
             <h1 class="mt-4 text-3xl font-bold leading-tight text-slate-900 sm:text-5xl">
-                Fresh lunch from <span class="text-brand-500">Tamkulay Tiffins</span>
+                {{ $heroTitle }}
             </h1>
             <p class="mt-3 max-w-xl text-base text-slate-600 sm:text-lg">
-                Home-style meals delivered to your college gate or ready for pickup at our counter.
-                Prepaid wallet, no queues, no fuss.
+                {{ $heroSubtitle }}
             </p>
 
             <div class="mt-6 flex flex-wrap gap-3">
@@ -25,10 +44,19 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                     </svg>
                 </a>
-                <a href="{{ route('register') }}"
-                   class="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 hover:border-brand-300 hover:text-brand-600">
-                    Create account
-                </a>
+                @guest
+                    <a href="{{ route('register') }}"
+                       class="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 hover:border-brand-300 hover:text-brand-600">
+                        Create account
+                    </a>
+                @else
+                    @if (auth()->user()->hasRole('Customer'))
+                        <a href="{{ route('wallet.index') }}"
+                           class="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 hover:border-brand-300 hover:text-brand-600">
+                            My wallet · Nu. {{ number_format(auth()->user()->wallet_balance, 0) }}
+                        </a>
+                    @endif
+                @endguest
             </div>
         </div>
     </section>
@@ -37,10 +65,9 @@
     <section class="mx-auto max-w-5xl px-4 py-10">
         <h2 class="text-lg font-bold text-slate-900 sm:text-xl">How it works</h2>
         <div class="mt-5 grid gap-4 sm:grid-cols-3">
-
             @php
                 $steps = [
-                    ['icon' => 'users', 'title' => '1. Register', 'text' => 'Sign up with your mobile number in under a minute.'],
+                    ['icon' => 'users', 'title' => '1. Register', 'text' => 'Sign up with your 8-digit mobile number in under a minute.'],
                     ['icon' => 'banknotes', 'title' => '2. Top up wallet', 'text' => 'Scan our QR, pay, upload the screenshot — we credit your wallet.'],
                     ['icon' => 'receipt', 'title' => '3. Order & enjoy', 'text' => 'Pick your meal for the day. Delivered to the gate or pickup at counter.'],
                 ];
@@ -67,7 +94,7 @@
                     Delivery
                 </h3>
                 <p class="mt-1 text-sm text-emerald-700">
-                    Lunch only · 11:00 AM – 2:00 PM · Delivered to college gate.
+                    Lunch only · cut-off at {{ $cutoffTime }} · delivered to college gate.
                 </p>
             </div>
             <div class="rounded-xl border border-sky-200 bg-sky-50 p-5">
@@ -76,7 +103,7 @@
                     Pickup
                 </h3>
                 <p class="mt-1 text-sm text-sky-700">
-                    Any time during opening hours · Our counter, near the college.
+                    Any time during opening hours · our counter, near the college.
                 </p>
             </div>
         </div>

@@ -122,4 +122,18 @@ Route::middleware(['web', 'auth', 'staff'])
             ->middleware('can:report.view')->name('reports.index');
         Route::get('/reports/export', ReportExportController::class)
             ->middleware('can:report.export')->name('reports.export');
+
+        // Expenses
+        Route::get('/expenses', \App\Modules\Admin\Http\Livewire\ExpensesIndex::class)
+            ->middleware('can:expense.view')->name('expenses.index');
+        Route::get('/expenses/categories', \App\Modules\Admin\Http\Livewire\ExpenseCategoriesIndex::class)
+            ->middleware('can:expense.view')->name('expenses.categories');
+        Route::get('/expenses/create', \App\Modules\Admin\Http\Livewire\ExpenseForm::class)
+            ->middleware('can:expense.create')->name('expenses.create');
+        Route::get('/expenses/{expense}/edit', \App\Modules\Admin\Http\Livewire\ExpenseForm::class)
+            ->middleware('can:expense.edit')->name('expenses.edit');
+
+        // Settings
+        Route::get('/settings', \App\Modules\Admin\Http\Livewire\SettingsIndex::class)
+            ->middleware('can:settings.view')->name('settings.index');
     });

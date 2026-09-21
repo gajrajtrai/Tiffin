@@ -12,8 +12,8 @@
         [
             'title' => 'Operations',
             'items' => [
-                ['label' => 'Orders',   'route' => 'admin.orders.index',   'icon' => 'receipt',     'active' => request()->routeIs('admin.orders.*'),   'can' => 'order.view'],
                 ['label' => 'Menu',     'route' => 'admin.menu.index',     'icon' => 'book',        'active' => request()->routeIs('admin.menu.*'),     'can' => 'menu.view'],
+                ['label' => 'Orders',   'route' => 'admin.orders.index',   'icon' => 'receipt',     'active' => request()->routeIs('admin.orders.*'),   'can' => 'order.view'],
                 ['label' => 'Payments', 'route' => 'admin.payments.index', 'icon' => 'credit-card', 'active' => request()->routeIs('admin.payments.*'), 'can' => 'payment.view'],
             ],
         ],

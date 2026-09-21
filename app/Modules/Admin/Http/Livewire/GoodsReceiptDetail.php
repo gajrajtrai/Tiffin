@@ -17,6 +17,8 @@ class GoodsReceiptDetail extends Component
     public ?string $statusMessage = null;
     public ?string $statusType = null;
 
+    public string $paymentMethod = 'cash';
+    public string $paymentReference = '';
     /**
      * Line editor state, keyed by GoodsReceiptItem id.
      * @var array<int, array{quantity_received: mixed, unit_cost: mixed, batch_code: string, expiry_date: string, notes: string}>
@@ -29,8 +31,11 @@ class GoodsReceiptDetail extends Component
             abort(403);
         }
 
-        $this->gr = $gr->load(['items.inventoryItem', 'purchaseOrder', 'supplier', 'receivedBy']);
+        $this->gr = $gr->load(['items.inventoryItem', 'purchaseOrder', 'supplier', 'receivedBy', 'expense']);
         $this->loadLines();
+
+        $this->paymentMethod = (string) ($this->gr->payment_method ?: 'cash');
+        $this->paymentReference = (string) ($this->gr->payment_reference ?? '');
     }
 
     public function layoutData(): array
@@ -217,6 +222,33 @@ class GoodsReceiptDetail extends Component
     | Render
     |--------------------------------------------------------------------------
     */
+    public function updatedPaymentMethod(): void
+    {
+        $this->persistPaymentMethod();
+    }
+
+    public function updatedPaymentReference(): void
+    {
+        $this->persistPaymentMethod();
+    }
+
+    protected function persistPaymentMethod(): void
+    {
+        if (! auth()->user()->can('purchase.edit')) {
+            return;
+        }
+
+        $this->gr->payment_method = $this->paymentMethod;
+        $this->gr->payment_reference = $this->paymentReference !== '' ? $this->paymentReference : null;
+        $this->gr->save();
+
+        if ($this->gr->isConfirmed()) {
+            app(\App\Modules\Supplier\Services\GoodsReceiptService::class)->syncExpensePayment($this->gr);
+        }
+
+        // Subtle feedback without a full banner — just refresh
+        $this->gr = $this->gr->fresh(['expense', 'items', 'purchaseOrder', 'supplier', 'receivedBy']);
+    }
 
     public function render(): View
     {

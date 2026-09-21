@@ -2,49 +2,46 @@
 
 namespace App\Providers;
 
-use Carbon\CarbonImmutable;
-use Illuminate\Support\Facades\Date;
-use Illuminate\Support\Facades\DB;
+use App\Modules\Core\Models\Setting;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
-use Illuminate\Validation\Rules\Password;
 
 class AppServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     */
     public function register(): void
     {
         //
     }
 
-    /**
-     * Bootstrap any application services.
-     */
     public function boot(): void
     {
-        $this->configureDefaults();
+        $this->overrideAppNameFromSettings();
     }
 
     /**
-     * Configure default behaviors for production-ready applications.
+     * At request time, replace config('app.name') with the value from
+     * the settings table. All existing views keep working unchanged.
      */
-    protected function configureDefaults(): void
+    protected function overrideAppNameFromSettings(): void
     {
-        Date::use(CarbonImmutable::class);
+        // Skip during console commands (migrations, seeders, tinker)
+        if (app()->runningInConsole()) {
+            return;
+        }
 
-        DB::prohibitDestructiveCommands(
-            app()->isProduction(),
-        );
+        try {
+            if (! Schema::hasTable('settings')) {
+                return;
+            }
 
-        Password::defaults(fn (): ?Password => app()->isProduction()
-            ? Password::min(12)
-                ->mixedCase()
-                ->letters()
-                ->numbers()
-                ->symbols()
-                ->uncompromised()
-            : null,
-        );
+            $name = Setting::get('restaurant_name');
+
+            if ($name && is_string($name) && trim($name) !== '') {
+                config(['app.name' => $name]);
+            }
+        } catch (\Throwable $e) {
+            // Settings table may not be seeded yet on very first request.
+            // Fall back to config default silently.
+        }
     }
 }
