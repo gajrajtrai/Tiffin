@@ -1,0 +1,337 @@
+Phase 16.3 — Queue Worker + Scheduler as Windows Services. Before I send the build, let me be honest about what your app actually needs, because this phase is smaller than the name suggests.
+Honest Assessment
+
+Your app barely uses the queue. I want to be direct about this rather than build infrastructure you don't need:
+
+    Media conversions (thumbnails) → nonQueued() — run synchronously
+
+    Notifications → no email configured
+
+    Reports → synchronous
+
+    Backups → run via backup.bat and Task Scheduler (Phase 16.2)
+
+    Wallet, orders, stock → all synchronous with DB transactions
+
+The only queued jobs that ever run are ones Spatie Backup occasionally dispatches (and even those are usually synchronous). So a persistent worker service would sit idle 99.9% of the time.
+
+The scheduler is different. Even a low-traffic app benefits from scheduled housekeeping: pruning old logs, cleaning stale sessions, checking backup health. That's what this phase delivers.
+What I'll Build
+
+16.3a — Scheduler (essential)
+
+    Windows Task Scheduler runs php artisan schedule:run every minute
+
+    Registers four useful scheduled tasks
+
+    Automatic log rotation
+
+16.3b — Queue worker (optional, deferred)
+
+    Skip for now. I'll show the setup at the bottom of this message so you know how to enable it if you ever need to (e.g., you add SMS notifications later).
+
+Step 1: Register Scheduled Tasks
+powershell
+
+notepad++ routes\console.php
+
+Ctrl+A, delete, paste:
+php
+
+<?php
+
+use Illuminate\Support\Facades\Schedule;
+
+/*
+|--------------------------------------------------------------------------
+| Scheduled Tasks
+|--------------------------------------------------------------------------
+|
+| These run automatically via Windows Task Scheduler calling
+| "php artisan schedule:run" every minute.
+|
+*/
+
+/*
+ * ─── Backup health watchdog ──────────────────────────────────────
+ * Runs at 6:00 AM daily. If the last backup is older than 36 hours,
+ * it writes an urgent entry to storage/logs/backup-health.log so
+ * you'll see it in the admin dashboard / log review.
+ */
+Schedule::call(function () {
+    $disk = \Illuminate\Support\Facades\Storage::disk('local');
+
+    $files = $disk->files('Laravel');
+    if (empty($files)) {
+        $files = $disk->allFiles();
+    }
+
+    $zips = collect($files)->filter(fn ($f) => str_ends_with($f, '.zip'));
+
+    if ($zips->isEmpty()) {
+        \Illuminate\Support\Facades\Log::channel('single')->warning(
+            '[BACKUP HEALTH] No backup files found at all — check Task Scheduler.'
+        );
+        return;
+    }
+
+    $latest = $zips
+        ->map(fn ($f) => $disk->lastModified($f))
+        ->max();
+
+    $hoursOld = (time() - $latest) / 3600;
+
+    if ($hoursOld > 36) {
+        \Illuminate\Support\Facades\Log::channel('single')->warning(sprintf(
+            '[BACKUP HEALTH] Latest backup is %.1f hours old — check Task Scheduler.',
+            $hoursOld
+        ));
+    }
+})
+    ->name('backup-health-watchdog')
+    ->dailyAt('06:00')
+    ->timezone('Asia/Thimphu');
+
+/*
+ * ─── Prune audit log entries older than 90 days ──────────────────
+ * Runs on the 1st of every month at 3:00 AM. Keeps the activity_log
+ * table from growing forever.
+ */
+Schedule::call(function () {
+    $cutoff = now()->subDays(90);
+
+    $deleted = \Spatie\Activitylog\Models\Activity::query()
+        ->where('created_at', '<', $cutoff)
+        ->delete();
+
+    \Illuminate\Support\Facades\Log::info(sprintf(
+        '[AUDIT PRUNE] Deleted %d activity log entries older than %s.',
+        $deleted,
+        $cutoff->toDateString()
+    ));
+})
+    ->name('audit-log-prune')
+    ->monthlyOn(1, '03:00')
+    ->timezone('Asia/Thimphu');
+
+/*
+ * ─── Prune stale soft-deleted records ────────────────────────────
+ * Any soft-deleted MenuItem, InventoryItem, or Supplier older than
+ * 90 days gets permanently removed. Logs a summary.
+ */
+Schedule::call(function () {
+    $cutoff = now()->subDays(90);
+
+    $counts = [
+        'menu_items'      => \App\Modules\Menu\Models\MenuItem::onlyTrashed()
+                                ->where('deleted_at', '<', $cutoff)->forceDelete(),
+        'inventory_items' => \App\Modules\Inventory\Models\InventoryItem::onlyTrashed()
+                                ->where('deleted_at', '<', $cutoff)->forceDelete(),
+        'suppliers'       => \App\Modules\Supplier\Models\Supplier::onlyTrashed()
+                                ->where('deleted_at', '<', $cutoff)->forceDelete(),
+    ];
+
+    \Illuminate\Support\Facades\Log::info(sprintf(
+        '[SOFT-DELETE PRUNE] menu_items=%d inventory=%d suppliers=%d',
+        $counts['menu_items'],
+        $counts['inventory_items'],
+        $counts['suppliers'],
+    ));
+})
+    ->name('soft-delete-prune')
+    ->weeklyOn(0, '03:30')  // Sundays at 3:30 AM
+    ->timezone('Asia/Thimphu');
+
+/*
+ * ─── Prune stale sessions ────────────────────────────────────────
+ * Removes session rows older than 8 hours. Light DB hygiene.
+ */
+Schedule::call(function () {
+    if (config('session.driver') !== 'database') {
+        return;
+    }
+
+    $cutoff = now()->subHours(8)->getTimestamp();
+
+    $deleted = \Illuminate\Support\Facades\DB::table('sessions')
+        ->where('last_activity', '<', $cutoff)
+        ->delete();
+
+    if ($deleted > 0) {
+        \Illuminate\Support\Facades\Log::info('[SESSION PRUNE] Removed '.$deleted.' stale sessions.');
+    }
+})
+    ->name('session-prune')
+    ->dailyAt('04:00')
+    ->timezone('Asia/Thimphu');
+
+Save and close.
+
+What each task does:
+Task	When	Purpose
+backup-health-watchdog	Daily 6 AM	Warns if backups are >36h old
+audit-log-prune	1st of month, 3 AM	Deletes audit entries >90 days
+soft-delete-prune	Sundays 3:30 AM	Hard-deletes old soft-deleted records
+session-prune	Daily 4 AM	Cleans stale session rows
+
+All write to storage/logs/laravel-YYYY-MM-DD.log — you can review from time to time.
+
+Verify the schedule is registered:
+powershell
+
+php artisan schedule:list
+
+Should print a table showing all four tasks with their next run times.
+Step 2: Test the Scheduler Manually
+powershell
+
+php artisan schedule:run
+
+Expected output:
+text
+
+No scheduled commands are ready to run.
+
+or (if any task's time has arrived):
+text
+
+Running ['artisan' backup-health-watchdog]...
+
+Then force-run a specific one to test the logic:
+powershell
+
+php artisan schedule:test
+
+This interactive command lists all scheduled tasks and lets you pick one to run immediately for testing. Choose the backup health watchdog — it should run without error and write nothing to the log (since your backups are recent).
+
+Check the log:
+powershell
+
+Get-Content storage\logs\laravel.log -Tail 20
+
+Step 3: Windows Task Scheduler — Run schedule:run Every Minute
+
+This is the piece that makes Laravel's scheduler tick. Without it, none of the tasks above ever fire.
+
+Open an Administrator PowerShell (right-click → Run as Administrator) and paste this single command:
+powershell
+
+schtasks /Create /TN "Laravel Scheduler" /TR "C:\Program Files\php\php.exe C:\Users\RAIPC\tiffin-app\artisan schedule:run" /SC MINUTE /MO 1 /RU SYSTEM /RL HIGHEST /F
+
+What each part does:
+Flag	Meaning
+/TN "Laravel Scheduler"	Task name
+/TR "..."	What to run (PHP + artisan + schedule:run)
+/SC MINUTE /MO 1	Every 1 minute
+/RU SYSTEM	Run as SYSTEM (no login required)
+/RL HIGHEST	Highest privileges
+/F	Force overwrite
+
+Expected output: SUCCESS: The scheduled task "Laravel Scheduler" was successfully created.
+
+Verify it exists:
+powershell
+
+schtasks /Query /TN "Laravel Scheduler" /V /FO LIST
+
+Test it immediately:
+powershell
+
+schtasks /Run /TN "Laravel Scheduler"
+
+Wait 10 seconds, then check the log:
+powershell
+
+Get-Content storage\logs\laravel.log -Tail 20
+
+You should see the "Running scheduled tasks" line from Laravel.
+Step 4: Verify Log Rotation
+
+Laravel's daily log channel rotates automatically. Confirm the config:
+powershell
+
+Select-String -Path config\logging.php -Pattern "LOG_DAILY_DAYS"
+
+Should show env('LOG_DAILY_DAYS', 14). We set LOG_DAILY_DAYS=14 in .env.production, so logs older than 14 days get deleted automatically. In your local .env, it might be set to a different value or missing — check:
+powershell
+
+Select-String -Path .env -Pattern "LOG_DAILY_DAYS"
+
+If missing, add it to .env:
+text
+
+LOG_DAILY_DAYS=14
+
+Save and run:
+powershell
+
+php artisan optimize:clear
+
+Step 5: Watch the First Real Cycle
+
+Tomorrow (or whenever you next check), review the logs to confirm the scheduler is running:
+powershell
+
+Get-ChildItem storage\logs | Sort-Object LastWriteTime -Descending | Select-Object -First 5
+
+You should see today's log file being written continuously as the scheduler runs.
+
+To verify the schedule actually fires at the right times, search for one of the task names:
+powershell
+
+Get-ChildItem storage\logs\*.log | Select-String "AUDIT PRUNE|SESSION PRUNE|BACKUP HEALTH" | Select-Object -Last 10
+
+Nothing will show for the first 24 hours (the tasks run at specific times), but you should see entries tomorrow after the first night.
+Step 6: Commit
+powershell
+
+git add .
+git commit -m "Phase 16.3: Scheduler via Windows Task Scheduler; 4 housekeeping tasks registered"
+
+On the Queue Worker — Skip For Now
+
+You don't need one. But I'll show you the setup for future reference, in case you add something that genuinely needs background processing (SMS notifications, PDF generation, email).
+
+If you ever need it:
+
+Open an Administrator PowerShell:
+powershell
+
+schtasks /Create /TN "Laravel Queue Worker" /TR "C:\Program Files\php\php.exe C:\Users\RAIPC\tiffin-app\artisan queue:work --sleep=3 --tries=3 --max-time=3600" /SC ONSTART /RU SYSTEM /RL HIGHEST /F
+
+The --max-time=3600 restarts the worker every hour, which avoids memory leaks. ONSTART means it starts when Windows boots, but queue:work runs continuously, so we don't need the scheduler to restart it.
+
+To check whether you actually need a worker — look at the pending jobs count:
+powershell
+
+php artisan tinker
+
+php
+
+DB::table('jobs')->count();
+exit
+
+If this stays at 0 (as I expect it will), skip the queue worker entirely.
+Report Back
+
+    Does php artisan schedule:list show all four tasks with correct next-run times?
+
+    Does php artisan schedule:run run without errors?
+
+    Does the "Laravel Scheduler" task appear in Task Scheduler? (schtasks /Query)
+
+    Does DB::table('jobs')->count() return 0? (confirming no queue worker needed)
+
+    Commit succeeded?
+
+Once confirmed, 16.3 is closed. Next is 16.4 — HTTPS + CSP, where we:
+
+    Generate a self-signed certificate for your LAN IP
+
+    Configure Windows to serve HTTPS on port 8443 (or 443 with admin rights)
+
+    Re-enable the CSP middleware from Phase 14.2, this time with npm run dev off and all assets tested
+
+    Turn on HSTS for the production environment
+
+After 16.4 comes 16.5 (deployment script + go-live checklist), and then you're live.
