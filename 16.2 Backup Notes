@@ -1,0 +1,504 @@
+What Phase 16.2 Delivers
+Layer	Purpose
+Retention policy	7 daily + 8 weekly + 4 monthly + 2 yearly, max 5 GB
+Backup command	One-command backup of DB + uploaded files
+Windows Task Scheduler job	Runs automatically at 2:00 AM daily
+Backup verification	A health check you can run anytime
+Monthly off-site copy	A manual routine to copy backups to an external drive
+Step 1: Verify the MariaDB Dump Path
+
+Backups need mariadb-dump.exe. We set this in Phase 1c but let's confirm it's still in place.
+powershell
+
+Select-String -Path config\database.php -Pattern "dump_binary_path"
+
+If it prints a path — good, skip to Step 2.
+
+If it prints nothing, open the config and add the dump block:
+powershell
+
+notepad++ config\database.php
+
+Find the 'mariadb' => [ connection and add inside it (before the closing ],):
+php
+
+        'dump' => [
+            'dump_binary_path' => 'C:/Program Files/MariaDB 12.3/bin',
+            'use_single_transaction' => true,
+            'timeout' => 60 * 5,
+        ],
+
+Verify the path is correct:
+powershell
+
+dir "C:\Program Files\MariaDB 12.3\bin\mariadb-dump.exe"
+
+If it 404s, find the actual path:
+powershell
+
+Get-ChildItem "C:\Program Files\MariaDB*" -Recurse -Filter "mariadb-dump.exe" | Select-Object -First 1 -ExpandProperty FullName
+
+Use the folder portion of the result in the config. Forward slashes, not backslashes.
+Step 2: Overwrite config/backup.php
+powershell
+
+notepad++ config\backup.php
+
+Select all (Ctrl+A), delete, paste:
+php
+
+<?php
+
+return [
+
+    /*
+    |--------------------------------------------------------------------------
+    | Backup Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Database + uploaded files. Retention: 7 daily, 8 weekly, 4 monthly,
+    | 2 yearly. Hard cap at 5 GB. Latest backup is never deleted.
+    |
+    */
+
+    'backup' => [
+
+        'name' => env('APP_NAME', 'chula-tiffins'),
+
+        'source' => [
+
+            'files' => [
+                'include' => [
+                    storage_path('app'),
+                ],
+                'exclude' => [
+                    storage_path('app/backups'),
+                    storage_path('app/Laravel'),
+                    storage_path('app/private/livewire-tmp'),
+                    storage_path('framework'),
+                    storage_path('logs'),
+                ],
+                'follow_links' => false,
+                'ignore_unreadable_directories' => true,
+                'relative_path' => null,
+            ],
+
+            'databases' => [
+                'mariadb',
+            ],
+        ],
+
+        'database_dump_compressor' => null,
+        'database_dump_file_timestamp_format' => null,
+        'database_dump_filename_base' => 'database',
+        'database_dump_file_extension' => '',
+        'database_dump_compressor_extension' => '',
+
+        'destination' => [
+
+            'compression_method' => ZipArchive::CM_DEFAULT,
+            'compression_level' => 9,
+            'filename_prefix' => '',
+            'disks' => [
+                'local',
+            ],
+        ],
+
+        'temporary_directory' => storage_path('app/backup-temp'),
+
+        'password' => env('BACKUP_ARCHIVE_PASSWORD'),
+
+        'encryption' => 'default',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Notifications
+    |--------------------------------------------------------------------------
+    |
+    | Disabled for LAN-only deployment (no reliable outbound email).
+    | Health checks are run manually or via the admin panel.
+    |
+    */
+
+    'notifications' => [
+
+        'notifications' => [
+            \Spatie\Backup\Notifications\Notifications\BackupHasFailedNotification::class => [],
+            \Spatie\Backup\Notifications\Notifications\UnhealthyBackupWasFoundNotification::class => [],
+            \Spatie\Backup\Notifications\Notifications\CleanupHasFailedNotification::class => [],
+            \Spatie\Backup\Notifications\Notifications\BackupWasSuccessfulNotification::class => [],
+            \Spatie\Backup\Notifications\Notifications\HealthyBackupWasFoundNotification::class => [],
+            \Spatie\Backup\Notifications\Notifications\CleanupWasSuccessfulNotification::class => [],
+        ],
+
+        'notifiable' => \Spatie\Backup\Notifications\Notifiable::class,
+
+        'mail' => [
+            'to' => 'admin@example.com',
+            'from' => [
+                'address' => env('MAIL_FROM_ADDRESS', 'hello@example.com'),
+                'name' => env('MAIL_FROM_NAME', 'Backup'),
+            ],
+        ],
+
+        'slack' => [
+            'webhook_url' => '',
+            'channel' => null,
+            'username' => null,
+            'icon' => null,
+        ],
+
+        'discord' => [
+            'webhook_url' => '',
+            'username' => '',
+            'avatar_url' => '',
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Backup Health Monitoring
+    |--------------------------------------------------------------------------
+    */
+
+    'monitor_backups' => [
+        [
+            'name' => env('APP_NAME', 'chula-tiffins'),
+            'disks' => ['local'],
+            'health_checks' => [
+                \Spatie\Backup\Tasks\Monitor\HealthChecks\MaximumAgeInDays::class => 1,
+                \Spatie\Backup\Tasks\Monitor\HealthChecks\MaximumStorageInMegabytes::class => 5000,
+            ],
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Cleanup / Retention
+    |--------------------------------------------------------------------------
+    |
+    | Rule order:
+    |   1. Never delete the latest backup
+    |   2. Keep ALL backups from the last 7 days
+    |   3. Keep DAILY backups for 16 days
+    |   4. Keep WEEKLY backups for 8 weeks
+    |   5. Keep MONTHLY backups for 4 months
+    |   6. Keep YEARLY backups for 2 years
+    |   7. Delete oldest if total > 5000 MB
+    |
+    */
+
+    'cleanup' => [
+        'strategy' => \Spatie\Backup\Tasks\Cleanup\Strategies\DefaultStrategy::class,
+
+        'default_strategy' => [
+            'keep_all_backups_for_days' => 7,
+            'keep_daily_backups_for_days' => 16,
+            'keep_weekly_backups_for_weeks' => 8,
+            'keep_monthly_backups_for_months' => 4,
+            'keep_yearly_backups_for_years' => 2,
+            'delete_oldest_backups_when_using_more_megabytes_than' => 5000,
+        ],
+    ],
+];
+
+Save and close.
+Step 3: Create the Backup Batch File
+
+A .bat file is what Windows Task Scheduler will execute. It handles logging and cleanup in one shot.
+powershell
+
+notepad++ backup.bat
+
+Create in the project root, paste:
+batch
+
+@echo off
+REM ─────────────────────────────────────────────────────────────
+REM  Chula Tiffins — Nightly Backup
+REM  Runs from Windows Task Scheduler at 2:00 AM
+REM  Writes output to storage\logs\backup.log
+REM ─────────────────────────────────────────────────────────────
+
+cd /d "C:\Users\RAIPC\tiffin-app"
+
+set PHP="C:\Program Files\php\php.exe"
+set LOG="C:\Users\RAIPC\tiffin-app\storage\logs\backup.log"
+
+echo. >> %LOG%
+echo ============================================ >> %LOG%
+echo Backup started at %date% %time% >> %LOG%
+echo ============================================ >> %LOG%
+
+REM Create the backup
+%PHP% artisan backup:run --only-db >> %LOG% 2>&1
+if %ERRORLEVEL% NEQ 0 (
+    echo BACKUP FAILED with error code %ERRORLEVEL% >> %LOG%
+)
+
+REM Include uploaded files (images, QR codes, receipts) on Sundays only
+for /f "tokens=1" %%a in ('powershell -Command "(Get-Date).DayOfWeek.value__"') do set DOW=%%a
+if "%DOW%"=="0" (
+    echo Sunday — including files backup >> %LOG%
+    %PHP% artisan backup:run --only-files >> %LOG% 2>&1
+)
+
+REM Clean old backups
+%PHP% artisan backup:clean >> %LOG% 2>&1
+
+echo Backup finished at %date% %time% >> %LOG%
+
+Save and close.
+
+What this does:
+
+    Runs the DB backup every night — small and fast
+
+    Runs the files backup only on Sundays — much heavier, keeps the LAN light on weekdays
+
+    Cleans up old backups per the retention policy
+
+    Logs everything to storage\logs\backup.log
+
+Adjust the paths if your PHP or project location is different. Verify:
+powershell
+
+Test-Path "C:\Program Files\php\php.exe"
+Test-Path "C:\Users\RAIPC\tiffin-app\artisan"
+
+Both should return True.
+Step 4: Test the Batch File Manually
+
+Before scheduling it, run it once by hand:
+powershell
+
+.\backup.bat
+
+Wait for it to finish (30 seconds to a few minutes, depending on DB size).
+
+Then check the log:
+powershell
+
+Get-Content storage\logs\backup.log -Tail 30
+
+Expected:
+text
+
+Backup started at 09/22/2026 14:23:41
+Backup completed successfully.
+...
+Cleanup completed successfully.
+Backup finished at 09/22/2026 14:24:02
+
+Verify a backup was created:
+powershell
+
+php artisan backup:list
+
+You should see a table showing the backup filename, disk, size, and date.
+
+If the batch file fails, open storage\logs\backup.log and paste the error here. Common causes:
+
+    Wrong mariadb-dump.exe path → check Step 1
+
+    PHP not on the path in the .bat → verify the set PHP= line
+
+    Permissions on storage\app → run once as Admin to seed
+
+Step 5: Create the Windows Task Scheduler Job
+
+Easiest method — one command in an Admin PowerShell:
+
+Right-click PowerShell → Run as Administrator, then paste this single command (replace nothing — paths are exact):
+powershell
+
+schtasks /Create /TN "Chula Tiffins Backup" /TR "C:\Users\RAIPC\tiffin-app\backup.bat" /SC DAILY /ST 02:00 /RU SYSTEM /RL HIGHEST /F
+
+What each part does:
+Flag	Meaning
+/TN "Chula Tiffins Backup"	Task name shown in Task Scheduler
+/TR "...backup.bat"	The command to run
+/SC DAILY	Schedule: every day
+/ST 02:00	Start time: 2:00 AM
+/RU SYSTEM	Run as SYSTEM account (no login needed)
+/RL HIGHEST	Highest privileges (for file access)
+/F	Force overwrite if the task exists
+
+Expected output: SUCCESS: The scheduled task "Chula Tiffins Backup" was successfully created.
+
+Verify it exists:
+powershell
+
+schtasks /Query /TN "Chula Tiffins Backup" /V /FO LIST
+
+Should show Status: Ready, Next Run Time: <tomorrow at 2:00 AM>, Run As User: SYSTEM.
+
+Test it immediately (without waiting until 2 AM):
+powershell
+
+schtasks /Run /TN "Chula Tiffins Backup"
+
+Then check storage\logs\backup.log for a new entry — it should appear within a minute.
+Step 6: Add Backup Status to the Admin Dashboard (Optional)
+
+Optional but useful: a small panel on the admin dashboard showing the last backup time and total backup size. Skip if you prefer — you can always run php artisan backup:list.
+
+If you want it, open:
+powershell
+
+notepad++ app\Modules\Admin\Http\Livewire\Dashboard.php
+
+In render(), find the $stats array and add these keys:
+php
+
+            'lastBackup'    => $this->lastBackupInfo()['time'],
+            'backupAge'     => $this->lastBackupInfo()['age'],
+            'backupHealthy' => $this->lastBackupInfo()['healthy'],
+
+Add this private method before render():
+php
+
+    protected function lastBackupInfo(): array
+    {
+        try {
+            $backups = \Illuminate\Support\Facades\Storage::disk('local')->files('Laravel');
+
+            if (empty($backups)) {
+                $backups = \Illuminate\Support\Facades\Storage::disk('local')->files();
+            }
+
+            $zips = collect($backups)->filter(fn ($f) => str_ends_with($f, '.zip'));
+
+            if ($zips->isEmpty()) {
+                return ['time' => null, 'age' => 'Never', 'healthy' => false];
+            }
+
+            $latest = $zips
+                ->map(fn ($f) => [
+                    'path' => $f,
+                    'time' => \Illuminate\Support\Facades\Storage::disk('local')->lastModified($f),
+                ])
+                ->sortByDesc('time')
+                ->first();
+
+            $ageHours = round((time() - $latest['time']) / 3600, 1);
+
+            return [
+                'time'    => \Carbon\Carbon::createFromTimestamp($latest['time'])->diffForHumans(),
+                'age'     => $ageHours.'h ago',
+                'healthy' => $ageHours < 36,
+            ];
+        } catch (\Throwable $e) {
+            return ['time' => null, 'age' => 'Error', 'healthy' => false];
+        }
+    }
+
+Then in resources\views\admin\dashboard.blade.php, add a fourth alert card inside the existing alerts row (after the lowBalanceCount block):
+blade
+
+            @if (! $stats['backupHealthy'])
+                <a href="#" class="rounded-xl border border-rose-200 bg-rose-50 p-4 transition hover:border-rose-300">
+                    <div class="flex items-center gap-3">
+                        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-rose-100 text-rose-700">
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <div class="text-lg font-bold text-rose-800">{{ $stats['backupAge'] }}</div>
+                            <div class="text-xs text-rose-700">Last backup — check Task Scheduler</div>
+                        </div>
+                    </div>
+                </a>
+            @endif
+
+This shows a red card on the admin dashboard if no backup has run in the last 36 hours — a visible cue something's wrong.
+
+Skip this step if you want to keep it simple. php artisan backup:list is enough.
+Step 7: Manual Off-Site Routine (Monthly)
+
+Automated backups protect you from software failures (bugs, bad migrations). They do not protect against hardware failures (disk death, theft, fire).
+
+Once a month, do this:
+
+    Plug in an external USB drive
+
+    Copy the newest backup zip from storage\app\private\<your-app-name>\ to the external drive
+
+    Store the drive somewhere separate from the server
+
+The backup:list command shows you where the files are:
+powershell
+
+php artisan backup:list
+
+Consider adding a recurring calendar reminder for the 1st of each month. This single habit will save your business if the production box ever fails.
+Step 8: Test a Restore
+
+A backup you've never tested is a backup you don't have. Let's prove it works once.
+powershell
+
+php artisan backup:list
+
+Note the most recent filename — something like 2026-09-22-14-23-41.zip. The path shown will tell you where it lives.
+
+Now verify the archive opens:
+powershell
+
+Get-ChildItem storage\app\private -Recurse -Filter "*.zip" | Sort-Object LastWriteTime -Descending | Select-Object -First 1 FullName, Length
+
+If the file is under 1 KB, the backup is empty — something failed. Check storage\logs\backup.log.
+
+If it's several hundred KB or more, do a test restore on a scratch database:
+
+    Create a throwaway DB:
+
+powershell
+
+mysql -u root -p -e "CREATE DATABASE tiffin_restore_test;"
+
+    Extract the zip to a temp folder, then import the SQL inside it:
+
+powershell
+
+Expand-Archive -Path "storage\app\private\Chula Tiffins\*.zip" -DestinationPath "$env:TEMP\tiffin-restore" -Force
+dir "$env:TEMP\tiffin-restore"
+
+    Find the .sql file inside and import it:
+
+powershell
+
+mysql -u root -p tiffin_restore_test < "$env:TEMP\tiffin-restore\db-dumps\mariadb-tiffin.sql"
+
+    Confirm tables exist:
+
+powershell
+
+mysql -u root -p tiffin_restore_test -e "SHOW TABLES;"
+
+Should list all 26 tables.
+
+    Clean up:
+
+powershell
+
+mysql -u root -p -e "DROP DATABASE tiffin_restore_test;"
+Remove-Item "$env:TEMP\tiffin-restore" -Recurse -Force
+
+If the restore works, your backup pipeline is proven.
+Commit
+powershell
+
+git add .
+git commit -m "Phase 16.2: Backup scheduling — retention policy, Windows Task Scheduler job, restore-tested"
+
+What You Now Have
+Threat	Protected by
+Bad migration corrupts data	Nightly DB backup (2 AM)
+Bug wipes uploaded images	Weekly files backup (Sunday 2 AM)
+Ransomware hits the server	Monthly off-site copy to USB drive
+Backup silently fails	Red dashboard alert if none in 36h
+Storage fills up	Auto-cleanup per retention policy
+Report Back
+

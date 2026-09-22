@@ -1,3 +1,5 @@
+@use('App\Modules\Core\Models\Setting')
+
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full bg-cream-50">
 <head>
@@ -20,7 +22,18 @@
 
     <footer class="hidden border-t border-slate-200 bg-white sm:block">
         <div class="mx-auto max-w-5xl px-4 py-6 text-center text-xs text-slate-500">
-            {{ config('app.name') }} · Near College Gate, Thimphu · +975 17 123 456
+            @php
+                $footerMobile = '+975 ' . Setting::get('restaurant_mobile', '');
+                $footerAddress = Setting::get('restaurant_address', '');
+            @endphp
+
+            {{ config('app.name') }}
+            @if ($footerAddress)
+                · {{ $footerAddress }}
+            @endif
+            @if ($footerMobile)
+                · {{ $footerMobile }}
+            @endif
         </div>
     </footer>
 
