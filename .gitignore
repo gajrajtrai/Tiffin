@@ -37,4 +37,4 @@ yarn-error.log
 /boost.json
 /opencode.json
 /opencode.jsonc
-*.ps1
+*.ps1*.txt
