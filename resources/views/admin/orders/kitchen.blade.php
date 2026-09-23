@@ -166,7 +166,12 @@
                                             @foreach ($order->items as $item)
                                                 <li class="flex items-start gap-2 text-sm text-slate-800">
                                                     <span class="{{ $item->is_veg ? 'text-emerald-600' : 'text-rose-600' }} mt-0.5">●</span>
-                                                    <span class="flex-1 font-medium">{{ $item->item_name }}</span>
+                                                    <span class="flex-1 font-medium">
+                                                        @if ($item->quantity > 1)
+                                                            <span class="mr-1 inline-flex items-center rounded bg-brand-100 px-1.5 text-xs font-bold text-brand-700">{{ $item->quantity }}×</span>
+                                                        @endif
+                                                        {{ $item->item_name }}
+                                                    </span>
                                                 </li>
                                             @endforeach
                                         </ul>

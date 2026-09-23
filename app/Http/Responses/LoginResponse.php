@@ -24,7 +24,7 @@ class LoginResponse implements LoginResponseContract
             return redirect()->intended(route('admin.dashboard'));
         }
 
-        // Customers → wallet, always (ignore any intended URL that would 403 them)
-        return redirect('/wallet');
+        // Customers → menu, always (ignore any intended URL that would 403 them)
+        return redirect()->route('menu.index');
     }
 }

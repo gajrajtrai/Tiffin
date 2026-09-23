@@ -123,7 +123,8 @@ class ReportExportController
                     item_type,
                     is_veg,
                     COUNT(*) as order_count,
-                    SUM(item_price) as revenue
+                    SUM(quantity) as total_quantity,
+                    SUM(item_price * quantity) as revenue
                 ')
                 ->whereHas('order', function ($q) use ($from, $to) {
                     $q->whereBetween('service_date', [$from, $to])

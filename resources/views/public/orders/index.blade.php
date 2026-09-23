@@ -46,8 +46,8 @@
                                 {{ $order->service_date->format('l, M j, Y') }}
                             </div>
                             <div class="mt-1 text-xs text-slate-500">
-                                @foreach ($order->items as $i => $item)
-                                    {{ $item->item_name }}@if (! $loop->last) · @endif
+                                @foreach ($order->items as $item)
+                                    @if ($item->quantity > 1){{ $item->quantity }}× @endif{{ $item->item_name }}@if (! $loop->last) · @endif
                                 @endforeach
                             </div>
                         </div>

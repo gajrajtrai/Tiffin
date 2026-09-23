@@ -171,7 +171,8 @@
                                 </div>
                                 <div class="text-xs text-slate-500">
                                     {{ $item->item_type === 'main' ? 'Main' : 'Fast Food' }}
-                                    · {{ $item->order_count }} orders
+                                    · {{ $item->total_quantity ?? $item->order_count }} sold
+                                    · {{ $item->order_count }} {{ $item->order_count === 1 ? 'order' : 'orders' }}
                                 </div>
                             </div>
                             <div class="shrink-0 text-right text-sm font-semibold text-slate-900">

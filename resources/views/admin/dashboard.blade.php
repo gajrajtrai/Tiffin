@@ -109,7 +109,7 @@
                             <div class="text-xs text-slate-600">
                                 @foreach ($order->items as $item)
                                     <span class="{{ $item->is_veg ? 'text-emerald-600' : 'text-rose-600' }}">●</span>
-                                    {{ $item->item_name }}@if(!$loop->last)<span class="text-slate-400">, </span>@endif
+                                    @if ($item->quantity > 1){{ $item->quantity }}× @endif{{ $item->item_name }}@if(!$loop->last)<span class="text-slate-400">, </span>@endif
                                 @endforeach
                             </div>
                         </td>

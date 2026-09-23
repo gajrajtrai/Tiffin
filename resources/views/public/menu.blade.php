@@ -1,7 +1,6 @@
 @php
     $user = auth()->user();
     $isCustomer = $user && $user->hasRole('Customer');
-    $cartCount = count($cart);
 @endphp
 
 <div class="mx-auto max-w-5xl px-4 py-6 pb-32 sm:py-10 sm:pb-40">
@@ -107,7 +106,7 @@
                                 'item' => $item,
                                 'isCustomer' => $isCustomer,
                                 'selectable' => in_array($item->id, $publishedIds, true),
-                                'selected' => in_array($item->id, $cart, true),
+                                'selectedQty' => $cart[$item->id] ?? 0,
                             ])
                         @endforeach
                     </div>
@@ -126,7 +125,7 @@
                                 'item' => $item,
                                 'isCustomer' => $isCustomer,
                                 'selectable' => in_array($item->id, $publishedIds, true),
-                                'selected' => in_array($item->id, $cart, true),
+                                'selectedQty' => $cart[$item->id] ?? 0,
                             ])
                         @endforeach
                     </div>
@@ -167,16 +166,17 @@
                 <div class="rounded-lg border border-slate-200 bg-slate-50">
                     <div class="divide-y divide-slate-200">
                         @foreach ($cartItems as $item)
+                            @php $qty = (int) $item->cart_quantity; @endphp
                             <div class="flex items-center gap-3 px-3 py-2">
                                 <span class="text-base {{ $item->is_veg ? 'text-emerald-600' : 'text-rose-600' }}">●</span>
                                 <div class="min-w-0 flex-1">
                                     <div class="truncate text-sm font-medium text-slate-900">{{ $item->name }}</div>
                                     <div class="text-xs text-slate-500">
-                                        {{ $item->isMain() ? 'Main Course' : 'Fast Food' }}
+                                        Nu. {{ number_format($item->price, 2) }} × {{ $qty }}
                                     </div>
                                 </div>
                                 <div class="shrink-0 text-sm font-semibold text-slate-900">
-                                    Nu. {{ number_format($item->price, 2) }}
+                                    Nu. {{ number_format((float) $item->price * $qty, 2) }}
                                 </div>
                                 <button type="button" wire:click="removeItem({{ $item->id }})"
                                         class="ml-1 rounded p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600"

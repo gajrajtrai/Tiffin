@@ -80,13 +80,21 @@
                 <div class="flex items-center gap-3 px-4 py-3">
                     <span class="text-base {{ $item->is_veg ? 'text-emerald-600' : 'text-rose-600' }}">●</span>
                     <div class="min-w-0 flex-1">
-                        <div class="truncate text-sm font-medium text-slate-900">{{ $item->item_name }}</div>
+                        <div class="truncate text-sm font-medium text-slate-900">
+                            {{ $item->item_name }}
+                            @if ($item->quantity > 1)
+                                <span class="ml-1 text-xs font-bold text-brand-600">× {{ $item->quantity }}</span>
+                            @endif
+                        </div>
                         <div class="text-xs text-slate-500">
                             {{ $item->isMain() ? 'Main Course' : 'Fast Food' }}
+                            @if ($item->quantity > 1)
+                                · Nu. {{ number_format($item->item_price, 2) }} each
+                            @endif
                         </div>
                     </div>
                     <div class="shrink-0 text-sm font-semibold text-slate-900">
-                        Nu. {{ number_format($item->item_price, 2) }}
+                        Nu. {{ number_format($item->lineTotal(), 2) }}
                     </div>
                 </div>
             @endforeach

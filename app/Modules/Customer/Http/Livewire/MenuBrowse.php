@@ -2,6 +2,7 @@
 
 namespace App\Modules\Customer\Http\Livewire;
 
+use App\Concerns\HasRateLimiting;
 use App\Modules\Menu\Models\DailyMenu;
 use App\Modules\Menu\Models\MenuItem;
 use App\Modules\Menu\Models\ServiceDay;
@@ -11,18 +12,18 @@ use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Component;
-use App\Concerns\HasRateLimiting;
 
 #[Layout('components.layouts.public')]
-
 class MenuBrowse extends Component
 {
     use HasRateLimiting;
 
+    public const MAX_QTY_PER_ITEM = 20;
+
     #[Url(as: 'view', except: 'today')]
     public string $view = 'today';
 
-    /** @var array<int> selected menu item IDs */
+    /** @var array<int, int> menuItemId => quantity */
     public array $cart = [];
 
     public string $deliveryMethod = Order::METHOD_DELIVERY;
@@ -38,32 +39,58 @@ class MenuBrowse extends Component
 
     /*
     |--------------------------------------------------------------------------
-    | Cart
+    | Cart operations
     |--------------------------------------------------------------------------
     */
 
-    public function toggleItem(int $menuItemId): void
+    public function incrementItem(int $menuItemId): void
     {
-        if (! auth()->check() || ! auth()->user()->hasRole('Customer')) {
+        if (! $this->canAdd($menuItemId)) {
             return;
         }
 
-        if (! DailyMenu::isPublished(today(), $menuItemId)) {
+        $current = $this->cart[$menuItemId] ?? 0;
+
+        if ($current >= self::MAX_QTY_PER_ITEM) {
             return;
         }
 
-        $idx = array_search($menuItemId, $this->cart, true);
-        if ($idx !== false) {
-            unset($this->cart[$idx]);
-            $this->cart = array_values($this->cart);
-        } else {
-            $this->cart[] = $menuItemId;
+        $this->cart[$menuItemId] = $current + 1;
+    }
+
+    public function decrementItem(int $menuItemId): void
+    {
+        if (! isset($this->cart[$menuItemId])) {
+            return;
         }
+
+        $this->cart[$menuItemId]--;
+
+        if ($this->cart[$menuItemId] <= 0) {
+            unset($this->cart[$menuItemId]);
+        }
+    }
+
+    public function setQuantity(int $menuItemId, mixed $value): void
+    {
+        if (! $this->canAdd($menuItemId)) {
+            return;
+        }
+
+        $qty = (int) $value;
+
+        if ($qty <= 0) {
+            unset($this->cart[$menuItemId]);
+            return;
+        }
+
+        $qty = min($qty, self::MAX_QTY_PER_ITEM);
+        $this->cart[$menuItemId] = $qty;
     }
 
     public function removeItem(int $menuItemId): void
     {
-        $this->cart = array_values(array_filter($this->cart, fn ($id) => $id !== $menuItemId));
+        unset($this->cart[$menuItemId]);
     }
 
     public function clearCart(): void
@@ -71,6 +98,15 @@ class MenuBrowse extends Component
         $this->cart = [];
         $this->showReviewModal = false;
         $this->orderError = null;
+    }
+
+    protected function canAdd(int $menuItemId): bool
+    {
+        if (! auth()->check() || ! auth()->user()->hasRole('Customer')) {
+            return false;
+        }
+
+        return DailyMenu::isPublished(today(), $menuItemId);
     }
 
     /*
@@ -119,7 +155,7 @@ class MenuBrowse extends Component
         try {
             $order = app(OrderPlacementService::class)->place(
                 customer:       auth()->user(),
-                menuItemIds:    $this->cart,
+                cart:           $this->cart,
                 deliveryMethod: $this->deliveryMethod,
             );
         } catch (\Throwable $e) {
@@ -160,14 +196,24 @@ class MenuBrowse extends Component
                 ->all();
         }
 
+        // Cart details — load items, attach quantity, compute totals
         $cartItems = collect();
         $cartTotal = 0.0;
 
         if (! empty($this->cart)) {
-            $cartItems = MenuItem::query()->whereIn('id', $this->cart)->get();
-            $cartTotal = (float) $cartItems->sum('price');
+            $items = MenuItem::query()
+                ->whereIn('id', array_keys($this->cart))
+                ->get();
+
+            $cartItems = $items->map(function (MenuItem $item) {
+                $item->setAttribute('cart_quantity', $this->cart[$item->id]);
+                return $item;
+            });
+
+            $cartTotal = (float) $cartItems->sum(fn ($i) => (float) $i->price * (int) $i->cart_quantity);
         }
 
+        $cartCount = (int) array_sum($this->cart);
         $walletBalance = (float) (auth()->user()?->wallet_balance ?? 0);
         $walletAfter = $walletBalance - $cartTotal;
         $hasSufficientBalance = $walletAfter >= 0;
@@ -179,6 +225,7 @@ class MenuBrowse extends Component
             'publishedIds',
             'cartItems',
             'cartTotal',
+            'cartCount',
             'walletBalance',
             'walletAfter',
             'hasSufficientBalance',

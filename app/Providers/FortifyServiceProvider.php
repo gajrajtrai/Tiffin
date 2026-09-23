@@ -63,12 +63,13 @@ class FortifyServiceProvider extends ServiceProvider
 
     /*
     |--------------------------------------------------------------------------
-    | Authentication
+    | Authentication — mobile OR email
     |--------------------------------------------------------------------------
     |
-    | Accept either a Bhutanese mobile number OR an email address as the
-    | login identifier. Mobile takes priority. Suspended accounts are
-    | rejected silently to avoid leaking account state.
+    | Accept either an 8-digit Bhutanese mobile number OR an email address.
+    | Mobile is normalised internally so "17111101", "97517111101", and
+    | "+97517111101" all match the same user. Suspended accounts are
+    | rejected silently.
     |
     */
 
@@ -82,15 +83,12 @@ class FortifyServiceProvider extends ServiceProvider
                 return null;
             }
 
-            // Normalise any common entry format down to 8-digit local:
-            //   +97517111101 → 17111101
-            //   97517111101  → 17111101
-            //   17111101     → 17111101
-            $mobileCandidate = preg_replace('/^(\+?975)/', '', trim($identifier));
+            // Normalise any common Bhutanese mobile format to 8-digit local
+            $mobileCandidate = preg_replace('/^(\+?975)/', '', $identifier);
 
             $user = User::query()
                 ->where('mobile', $mobileCandidate)
-                ->orWhere('mobile', $identifier)   // backward compat: match old +975 form if any remain
+                ->orWhere('mobile', $identifier)
                 ->orWhere('email', $identifier)
                 ->first();
 
@@ -112,18 +110,17 @@ class FortifyServiceProvider extends ServiceProvider
 
     /*
     |--------------------------------------------------------------------------
-    | Post-login redirects
+    | Post-login / post-register redirects
     |--------------------------------------------------------------------------
     |
-    | Staff go to the admin dashboard. Customers go to their wallet.
-    | (Wallet page is built in Phase 10.3 — for now it's a placeholder.)
+    | Staff go to the admin dashboard. Customers go to the public menu.
+    | The login response is handled by App\Http\Responses\LoginResponse
+    | bound in register() above.
     |
     */
 
     private function configureRedirects(): void
     {
-        // Login redirect is handled by App\Http\Responses\LoginResponse.
-
         Fortify::redirects('register', function () {
             $user = auth()->user();
 
@@ -135,7 +132,7 @@ class FortifyServiceProvider extends ServiceProvider
                 return route('admin.dashboard');
             }
 
-            return url('/wallet');
+            return route('menu.index');
         });
 
         Fortify::redirects('email-verification', function () {
@@ -145,7 +142,7 @@ class FortifyServiceProvider extends ServiceProvider
                 return route('admin.dashboard');
             }
 
-            return url('/wallet');
+            return route('menu.index');
         });
     }
 
@@ -157,12 +154,10 @@ class FortifyServiceProvider extends ServiceProvider
 
     private function configureRateLimiting(): void
     {
-        // Two-factor challenge — tight window, session-based key
         RateLimiter::for('two-factor', function (Request $request) {
             return Limit::perMinute(5)->by($request->session()->get('login.id'));
         });
 
-        // Login — per username+IP so distributed attempts are still caught
         RateLimiter::for('login', function (Request $request) {
             $throttleKey = Str::transliterate(
                 Str::lower($request->input(Fortify::username())).'|'.$request->ip()
@@ -177,7 +172,6 @@ class FortifyServiceProvider extends ServiceProvider
                 });
         });
 
-        // Registration — rare action, tighter limit
         RateLimiter::for('register', function (Request $request) {
             return Limit::perHour(5)
                 ->by($request->ip())
@@ -188,7 +182,6 @@ class FortifyServiceProvider extends ServiceProvider
                 });
         });
 
-        // Password reset requests — prevents email bombing
         RateLimiter::for('password-reset', function (Request $request) {
             return Limit::perHour(3)
                 ->by($request->ip())
@@ -199,7 +192,6 @@ class FortifyServiceProvider extends ServiceProvider
                 });
         });
 
-        // Passkey endpoints — same as before, but slightly clearer key
         RateLimiter::for('passkeys', function (Request $request) {
             $credentialId = $request->input('credential.id');
 

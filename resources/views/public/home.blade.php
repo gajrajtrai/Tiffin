@@ -7,10 +7,55 @@
     $restaurant   = Setting::get('restaurant_name', config('app.name'));
     $serviceDay   = ServiceDay::forDate(today());
     $cutoffTime   = $serviceDay->effectiveCutoffTime();
+
+    // Low-balance banner state
+    $customer = auth()->user();
+    $showLowBalance = $customer
+        && $customer->hasRole('Customer')
+        && $customer->hasLowBalance();
+
+    // How much to top up to just clear the threshold
+    $shortfallToThreshold = $showLowBalance
+        ? max(0, (float) $customer->low_balance_threshold - (float) $customer->wallet_balance)
+        : 0;
 @endphp
 
 <x-layouts.public title="{{ $restaurant }} · Fresh Tiffins, Delivered">
-    {{-- Hero --}}
+
+    {{-- ─── Low-balance reminder ───────────────────────────── --}}
+    @if ($showLowBalance)
+        <div class="border-b border-amber-200 bg-amber-50">
+            <div class="mx-auto flex max-w-5xl items-start gap-3 px-4 py-3 sm:items-center">
+
+                <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
+                </div>
+
+                <div class="min-w-0 flex-1">
+                    <div class="text-sm font-semibold text-amber-900">
+                        Your wallet balance is running low
+                    </div>
+                    <div class="mt-0.5 text-xs text-amber-800">
+                        Balance: <strong>Nu. {{ number_format((float) $customer->wallet_balance, 2) }}</strong>
+                        @if ($shortfallToThreshold > 0)
+                            · Top up <strong>Nu. {{ number_format($shortfallToThreshold, 0) }}</strong>
+                            or more to stay above the alert threshold
+                        @endif
+                    </div>
+                </div>
+
+                <a href="{{ route('wallet.index') }}"
+                   class="shrink-0 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-amber-700">
+                    Top up
+                </a>
+            </div>
+        </div>
+    @endif
+
+    {{-- ─── Hero ───────────────────────────────────────────── --}}
     <section class="bg-gradient-to-b from-brand-50 to-cream-50">
         <div class="mx-auto max-w-5xl px-4 py-10 sm:py-16">
             @if ($serviceDay->is_open)
@@ -61,7 +106,7 @@
         </div>
     </section>
 
-    {{-- How it works --}}
+    {{-- ─── How it works ──────────────────────────────────── --}}
     <section class="mx-auto max-w-5xl px-4 py-10">
         <h2 class="text-lg font-bold text-slate-900 sm:text-xl">How it works</h2>
         <div class="mt-5 grid gap-4 sm:grid-cols-3">
@@ -85,7 +130,7 @@
         </div>
     </section>
 
-    {{-- Info strip --}}
+    {{-- ─── Info strip ────────────────────────────────────── --}}
     <section class="mx-auto max-w-5xl px-4 pb-10">
         <div class="grid gap-4 sm:grid-cols-2">
             <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-5">

@@ -1,31 +1,52 @@
-<x-layouts::auth :title="__('Forgot password')">
-    <div class="flex flex-col gap-6">
-        <x-auth-header :title="__('Forgot password')" :description="__('Enter your email to receive a password reset link')" />
+<x-layouts.auth :title="__('Forgot password')">
+    <div class="space-y-6">
 
-        <!-- Session Status -->
-        <x-auth-session-status class="text-center" :status="session('status')" />
+        <div class="text-center">
+            <h1 class="text-xl font-bold text-slate-900">Reset your password</h1>
+            <p class="mt-1 text-sm text-slate-500">
+                Enter your email and we'll send you a link to reset it.
+            </p>
+        </div>
 
-        <form method="POST" action="{{ route('password.email') }}" class="flex flex-col gap-6">
+        {{-- Session status --}}
+        @if (session('status'))
+            <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+                {{ session('status') }}
+            </div>
+        @endif
+
+        <form method="POST" action="{{ route('password.email') }}" class="space-y-4">
             @csrf
 
-            <!-- Email Address -->
-            <flux:input
-                name="email"
-                :label="__('Email address')"
-                type="email"
-                required
-                autofocus
-                placeholder="email@example.com"
-            />
+            <div>
+                <label for="email" class="mb-1 block text-xs font-medium text-slate-600">
+                    Email Address
+                </label>
+                <input type="email"
+                       id="email"
+                       name="email"
+                       value="{{ old('email') }}"
+                       required
+                       autofocus
+                       autocomplete="email"
+                       placeholder="you@example.com"
+                       class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500" />
+                @error('email')
+                    <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>
+                @enderror
+            </div>
 
-            <flux:button variant="primary" type="submit" class="w-full" data-test="email-password-reset-link-button">
-                {{ __('Email password reset link') }}
-            </flux:button>
+            <button type="submit"
+                    class="w-full rounded-lg bg-brand-500 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2">
+                Send reset link
+            </button>
         </form>
 
-        <div class="space-x-1 rtl:space-x-reverse text-center text-sm text-zinc-400">
-            <span>{{ __('Or, return to') }}</span>
-            <flux:link :href="route('login')" wire:navigate>{{ __('log in') }}</flux:link>
-        </div>
+        <p class="text-center text-sm text-slate-600">
+            Remembered it?
+            <a href="{{ route('login') }}" class="font-semibold text-brand-600 hover:text-brand-700">
+                Back to sign in
+            </a>
+        </p>
     </div>
-</x-layouts::auth>
+</x-layouts.auth>

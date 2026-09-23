@@ -46,12 +46,6 @@ class ReportsDashboard extends Component
         ];
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Date range presets
-    |--------------------------------------------------------------------------
-    */
-
     public function presetToday(): void
     {
         $this->from = today()->toDateString();
@@ -82,12 +76,6 @@ class ReportsDashboard extends Component
         $this->to = today()->toDateString();
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Render
-    |--------------------------------------------------------------------------
-    */
-
     public function render(): View
     {
         $fromDate = Carbon::parse($this->from)->startOfDay();
@@ -95,11 +83,7 @@ class ReportsDashboard extends Component
         $fromStr = $fromDate->toDateString();
         $toStr = $toDate->toDateString();
 
-        /*
-        |----------------------------------------------------------------------
-        | Sales summary
-        |----------------------------------------------------------------------
-        */
+        // ─── Sales summary ────────────────────────────────────────
         $salesQuery = Order::query()
             ->whereBetween('service_date', [$fromStr, $toStr])
             ->where('status', '!=', Order::STATUS_CANCELLED);
@@ -120,11 +104,7 @@ class ReportsDashboard extends Component
         $deliveryCount = (clone $salesQuery)->where('delivery_method', Order::METHOD_DELIVERY)->count();
         $pickupCount = (clone $salesQuery)->where('delivery_method', Order::METHOD_PICKUP)->count();
 
-        /*
-        |----------------------------------------------------------------------
-        | Expenses
-        |----------------------------------------------------------------------
-        */
+        // ─── Expenses ─────────────────────────────────────────────
         $expenseTotal = (float) Expense::query()
             ->whereBetween('expense_date', [$fromStr, $toStr])
             ->whereNull('voided_at')
@@ -132,11 +112,7 @@ class ReportsDashboard extends Component
 
         $netProfit = $revenue - $expenseTotal;
 
-        /*
-        |----------------------------------------------------------------------
-        | Wallet activity
-        |----------------------------------------------------------------------
-        */
+        // ─── Wallet activity ──────────────────────────────────────
         $walletCredits = (float) WalletTransaction::query()
             ->whereBetween('created_at', [$fromDate, $toDate])
             ->where('type', WalletTransaction::TYPE_CREDIT)
@@ -156,11 +132,7 @@ class ReportsDashboard extends Component
             ->whereHas('roles', fn ($q) => $q->where('name', 'Customer'))
             ->sum('wallet_balance');
 
-        /*
-        |----------------------------------------------------------------------
-        | Daily sales series
-        |----------------------------------------------------------------------
-        */
+        // ─── Daily sales series ───────────────────────────────────
         $dailySeries = Order::query()
             ->selectRaw('DATE(service_date) as day, SUM(total) as revenue, COUNT(*) as orders')
             ->whereBetween('service_date', [$fromStr, $toStr])
@@ -183,33 +155,26 @@ class ReportsDashboard extends Component
             $cursor->addDay();
         }
 
-        /*
-        |----------------------------------------------------------------------
-        | Top items
-        |----------------------------------------------------------------------
-        */
+        // ─── Top items (quantity-aware) ───────────────────────────
         $topItems = OrderItem::query()
             ->selectRaw('
                 item_name,
                 item_type,
                 is_veg,
                 COUNT(*) as order_count,
-                SUM(item_price) as revenue
+                SUM(quantity) as total_quantity,
+                SUM(item_price * quantity) as revenue
             ')
             ->whereHas('order', function ($q) use ($fromStr, $toStr) {
                 $q->whereBetween('service_date', [$fromStr, $toStr])
                   ->where('status', '!=', Order::STATUS_CANCELLED);
             })
             ->groupBy('item_name', 'item_type', 'is_veg')
-            ->orderByDesc('order_count')
+            ->orderByDesc('total_quantity')
             ->limit(10)
             ->get();
 
-        /*
-        |----------------------------------------------------------------------
-        | Top customers
-        |----------------------------------------------------------------------
-        */
+        // ─── Top customers ────────────────────────────────────────
         $topCustomers = User::query()
             ->selectRaw('users.id, users.name, users.mobile, users.wallet_balance, COUNT(orders.id) as order_count, COALESCE(SUM(orders.total), 0) as total_spend')
             ->join('orders', function ($join) use ($fromStr, $toStr) {
@@ -222,35 +187,28 @@ class ReportsDashboard extends Component
             ->limit(10)
             ->get();
 
-        /*
-        |----------------------------------------------------------------------
-        | Expense breakdown by category
-        |----------------------------------------------------------------------
-        */
+        // ─── Expense breakdown ────────────────────────────────────
         $expenseBreakdown = ExpenseCategory::query()
             ->select('expense_categories.id', 'expense_categories.name', 'expense_categories.color')
             ->withSum(['expenses as total' => function ($q) use ($fromStr, $toStr) {
-                $q->whereBetween('expense_date', [$fromStr, $toStr]);
+                $q->whereBetween('expense_date', [$fromStr, $toStr])
+                  ->whereNull('voided_at');
             }], 'amount')
             ->orderByDesc('total')
             ->get()
             ->filter(fn ($cat) => ($cat->total ?? 0) > 0);
 
-        /*
-        |----------------------------------------------------------------------
-        | Stock valuation
-        |----------------------------------------------------------------------
-        */
+        // ─── Stock valuation ──────────────────────────────────────
         $inventoryItems = InventoryItem::query()
             ->active()
             ->orderBy('name')
             ->get();
 
         $stockStats = [
-            'totalValue'  => (float) $inventoryItems->sum(fn ($i) => $i->stockValue()),
-            'totalItems'  => $inventoryItems->count(),
-            'lowStock'    => $inventoryItems->filter(fn ($i) => $i->isLowStock())->count(),
-            'outOfStock'  => $inventoryItems->filter(fn ($i) => $i->isOutOfStock())->count(),
+            'totalValue' => (float) $inventoryItems->sum(fn ($i) => $i->stockValue()),
+            'totalItems' => $inventoryItems->count(),
+            'lowStock'   => $inventoryItems->filter(fn ($i) => $i->isLowStock())->count(),
+            'outOfStock' => $inventoryItems->filter(fn ($i) => $i->isOutOfStock())->count(),
         ];
 
         return view('admin.reports.index', compact(

@@ -23,9 +23,14 @@ class OrderPlacementService
      *
      * @param array<int> $menuItemIds
      */
+    /**
+     * Place a customer order for today.
+     *
+     * @param  array<int, int>  $cart  menuItemId => quantity
+     */
     public function place(
         User $customer,
-        array $menuItemIds,
+        array $cart,
         string $deliveryMethod,
         ?string $deliverySlot = null,
         ?string $notes = null,
@@ -34,7 +39,13 @@ class OrderPlacementService
             throw new RuntimeException('Only customers can place orders.');
         }
 
-        if (empty($menuItemIds)) {
+        // Drop zero/negative quantities, cast to int
+        $cart = array_filter(
+            array_map('intval', $cart),
+            fn ($qty) => $qty > 0
+        );
+
+        if (empty($cart)) {
             throw new RuntimeException('Please select at least one item.');
         }
 
@@ -56,7 +67,6 @@ class OrderPlacementService
             );
         }
 
-        // One active order per customer per day
         $hasActive = Order::query()
             ->where('user_id', $customer->id)
             ->whereDate('service_date', $date)
@@ -71,17 +81,18 @@ class OrderPlacementService
             throw new RuntimeException('You already have an active order for today.');
         }
 
-        // Load items, ensure they're active
+        // Load items
         $items = MenuItem::query()
-            ->whereIn('id', $menuItemIds)
+            ->whereIn('id', array_keys($cart))
             ->where('is_active', true)
-            ->get();
+            ->get()
+            ->keyBy('id');
 
-        if ($items->count() !== count($menuItemIds)) {
+        if ($items->count() !== count($cart)) {
             throw new RuntimeException('One or more items are no longer available.');
         }
 
-        // Every item must be published for today
+        // Every item must be published today
         $publishedIds = DailyMenu::query()
             ->whereDate('service_date', $date)
             ->pluck('menu_item_id')
@@ -93,9 +104,13 @@ class OrderPlacementService
             }
         }
 
-        $total = (float) $items->sum('price');
+        // Compute total
+        $total = 0.0;
+        foreach ($cart as $menuItemId => $qty) {
+            $item = $items[$menuItemId];
+            $total += (float) $item->price * $qty;
+        }
 
-        // Check wallet balance early (before DB transaction) for a friendly error
         $customer->refresh();
 
         if ((float) $customer->wallet_balance < $total) {
@@ -106,7 +121,7 @@ class OrderPlacementService
             ));
         }
 
-        return DB::transaction(function () use ($customer, $items, $total, $deliveryMethod, $deliverySlot, $serviceDay, $notes) {
+        return DB::transaction(function () use ($customer, $cart, $items, $total, $deliveryMethod, $deliverySlot, $serviceDay, $notes) {
             $order = Order::create([
                 'user_id'         => $customer->id,
                 'service_date'    => today(),
@@ -120,7 +135,9 @@ class OrderPlacementService
                 'notes'           => $notes,
             ]);
 
-            foreach ($items as $item) {
+            foreach ($cart as $menuItemId => $qty) {
+                $item = $items[$menuItemId];
+
                 OrderItem::create([
                     'order_id'     => $order->id,
                     'menu_item_id' => $item->id,
@@ -128,6 +145,7 @@ class OrderPlacementService
                     'item_price'   => $item->price,
                     'is_veg'       => $item->is_veg,
                     'item_type'    => $item->type,
+                    'quantity'     => $qty,
                 ]);
             }
 

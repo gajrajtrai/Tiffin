@@ -11,6 +11,7 @@ class OrderItem extends Model
     protected $fillable = [
         'order_id', 'menu_item_id',
         'item_name', 'item_price', 'is_veg', 'item_type',
+        'quantity',
     ];
 
     protected function casts(): array
@@ -18,6 +19,7 @@ class OrderItem extends Model
         return [
             'item_price' => 'decimal:2',
             'is_veg'     => 'boolean',
+            'quantity'   => 'integer',
         ];
     }
 
@@ -51,5 +53,9 @@ class OrderItem extends Model
     public function isVeg(): bool
     {
         return (bool) $this->is_veg;
+    }
+	public function lineTotal(): float
+    {
+    return (float) $this->item_price * (int) $this->quantity;
     }
 }
