@@ -109,13 +109,11 @@
                                         <div class="text-xs text-slate-500">Account Name</div>
                                         <div class="font-semibold text-slate-900">{{ $bank['account_name'] }}</div>
                                     </div>
-                                    <div>
-                                        <div class="text-xs text-slate-500">Account Number</div>
-                                        <div class="font-mono text-base font-bold tracking-wider text-brand-600">
-                                            {{ $bank['account_number'] ?: '—' }}
-                                        </div>
-                                    </div>
                                 </div>
+                                <p class="mt-3 text-[11px] leading-relaxed text-slate-500">
+                                    Open your {{ $bank['short_name'] ?? $bank['bank_name'] }} app and scan the QR
+                                    on the left to pay. The account is automatically filled from the QR.
+                                </p>
                             </div>
                         </div>
                     @endforeach

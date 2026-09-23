@@ -38,7 +38,7 @@ class SettingsIndex extends Component
     public string $landing_hero_subtitle = '';
 
     // Banks
-    /** @var array<int, array{bank_name:string, short_name:string, account_name:string, account_number:string, qr_image:string}> */
+    /** @var array<int, array{bank_name:string, short_name:string, account_name:string, qr_image:string}> */
     public array $banks = [];
 
     /** @var array<int, \Livewire\Features\SupportFileUploads\TemporaryUploadedFile|null> */
@@ -69,7 +69,7 @@ class SettingsIndex extends Component
         $this->landing_hero_title = (string) Setting::get('landing_hero_title', 'Fresh lunch from Tamkulay Tiffins');
         $this->landing_hero_subtitle = (string) Setting::get('landing_hero_subtitle', 'Home-style meals delivered to your college gate or ready for pickup at our counter. Prepaid wallet, no queues, no fuss.');
 
-        // Load banks from JSON setting
+        // Load banks from JSON setting. account_number is intentionally dropped.
         $raw = Setting::get('bank_accounts', []);
         if (is_string($raw)) {
             $decoded = json_decode($raw, true);
@@ -78,14 +78,12 @@ class SettingsIndex extends Component
             $this->banks = $raw;
         }
 
-        // Ensure all keys exist on each bank entry
         foreach ($this->banks as $i => $bank) {
             $this->banks[$i] = [
-                'bank_name'      => $bank['bank_name'] ?? '',
-                'short_name'     => $bank['short_name'] ?? '',
-                'account_name'   => $bank['account_name'] ?? '',
-                'account_number' => $bank['account_number'] ?? '',
-                'qr_image'       => $bank['qr_image'] ?? '',
+                'bank_name'    => $bank['bank_name'] ?? '',
+                'short_name'   => $bank['short_name'] ?? '',
+                'account_name' => $bank['account_name'] ?? '',
+                'qr_image'     => $bank['qr_image'] ?? '',
             ];
         }
     }
@@ -115,11 +113,10 @@ class SettingsIndex extends Component
     public function addBank(): void
     {
         $this->banks[] = [
-            'bank_name'      => '',
-            'short_name'     => '',
-            'account_name'   => '',
-            'account_number' => '',
-            'qr_image'       => '',
+            'bank_name'    => '',
+            'short_name'   => '',
+            'account_name' => '',
+            'qr_image'     => '',
         ];
     }
 
@@ -129,7 +126,6 @@ class SettingsIndex extends Component
             return;
         }
 
-        // Delete QR file if present
         $qr = $this->banks[$index]['qr_image'] ?? '';
         if ($qr !== '' && file_exists(public_path('qr/'.$qr))) {
             @unlink(public_path('qr/'.$qr));
@@ -164,7 +160,7 @@ class SettingsIndex extends Component
 
     protected function rules(): array
     {
-        $rules = [
+        return [
             'restaurant_name'        => 'required|string|max:255',
             'restaurant_mobile'      => 'required|string|regex:/^\d{8}$/',
             'restaurant_address'     => 'required|string|max:255',
@@ -185,13 +181,10 @@ class SettingsIndex extends Component
             'banks.*.bank_name'      => 'required|string|max:100',
             'banks.*.short_name'     => 'required|string|max:20',
             'banks.*.account_name'   => 'required|string|max:100',
-            'banks.*.account_number' => 'nullable|string|max:50',
 
             'qrUploads'              => 'array',
             'qrUploads.*'            => 'nullable|image|max:2048|mimes:jpeg,png,webp',
         ];
-
-        return $rules;
     }
 
     protected function messages(): array
@@ -259,7 +252,6 @@ class SettingsIndex extends Component
                 $bankLabel = $bank['bank_name'] ?: 'Bank #'.($index + 1);
 
                 try {
-                    // Resolve source path — Livewire's temp file
                     $source = $file->getRealPath();
 
                     if ($source === false || ! is_file($source)) {
@@ -279,30 +271,21 @@ class SettingsIndex extends Component
                     $filename = $base.'-'.time().'-'.$index.'.'.$ext;
                     $destination = $qrDir.DIRECTORY_SEPARATOR.$filename;
 
-                    // Remove any previous QR file with a different name
                     $old = $bank['qr_image'] ?? '';
                     if ($old !== '' && $old !== $filename && file_exists($qrDir.DIRECTORY_SEPARATOR.$old)) {
                         @unlink($qrDir.DIRECTORY_SEPARATOR.$old);
                     }
 
-                    // Manual copy — bypasses Symfony's move() / rename(),
-                    // which fails silently on locked Windows files.
                     $contents = @file_get_contents($source);
-
                     if ($contents === false) {
                         $err = error_get_last();
-                        throw new \RuntimeException(
-                            'Could not read temp file: '.($err['message'] ?? 'unknown error')
-                        );
+                        throw new \RuntimeException('Could not read temp file: '.($err['message'] ?? 'unknown error'));
                     }
 
                     $written = @file_put_contents($destination, $contents);
-
                     if ($written === false) {
                         $err = error_get_last();
-                        throw new \RuntimeException(
-                            'Could not write to '.$destination.': '.($err['message'] ?? 'unknown error')
-                        );
+                        throw new \RuntimeException('Could not write to '.$destination.': '.($err['message'] ?? 'unknown error'));
                     }
 
                     $this->banks[$index]['qr_image'] = $filename;
@@ -314,25 +297,23 @@ class SettingsIndex extends Component
         } catch (\Throwable $e) {
             $qrFailures[] = 'QR setup failed: '.$e->getMessage();
         }
-        // ─── Phase 3: Persist bank JSON (also isolated) ──────────────
+
+        // ─── Phase 3: Persist bank JSON ──────────────────────────────
         try {
             DB::transaction(function () {
                 Setting::setJson('bank_accounts', array_map(fn ($b) => [
-                    'bank_name'      => $b['bank_name'],
-                    'short_name'     => $b['short_name'],
-                    'account_name'   => $b['account_name'],
-                    'account_number' => $b['account_number'] ?? '',
-                    'qr_image'       => $b['qr_image'] ?? '',
+                    'bank_name'    => $b['bank_name'],
+                    'short_name'   => $b['short_name'],
+                    'account_name' => $b['account_name'],
+                    'qr_image'     => $b['qr_image'] ?? '',
                 ], $this->banks));
             });
         } catch (\Throwable $e) {
             $qrFailures[] = 'Bank list save failed: '.$e->getMessage();
         }
 
-        // ─── Clear upload references and report ──────────────────────
+        // ─── Clear uploads and re-read from DB ──────────────────────
         $this->qrUploads = [];
-
-        // Force re-read from DB so the form reflects saved values
         $this->mount();
 
         if (! empty($qrFailures)) {
