@@ -25,7 +25,9 @@ class OrderService
             $locked = Order::query()->lockForUpdate()->findOrFail($order->id);
 
             $allowed = match ($locked->status) {
-                Order::STATUS_PENDING   => [Order::STATUS_CONFIRMED],
+                // New orders go straight to the kitchen — no confirmation step.
+                Order::STATUS_PENDING   => [Order::STATUS_PREPARING],
+                // Legacy: any pre-existing "confirmed" orders can still be moved forward.
                 Order::STATUS_CONFIRMED => [Order::STATUS_PREPARING],
                 Order::STATUS_PREPARING => [Order::STATUS_READY],
                 Order::STATUS_READY     => [Order::STATUS_DELIVERED, Order::STATUS_PICKED_UP],

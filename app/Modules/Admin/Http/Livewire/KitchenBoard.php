@@ -14,6 +14,11 @@ class KitchenBoard extends Component
     public ?string $statusMessage = null;
     public ?string $statusType = null;
 
+    // Reject modal
+    public bool $showRejectModal = false;
+    public ?int $rejectingId = null;   // null + showRejectModal = bulk reject
+    public string $rejectReason = '';
+
     public function mount(): void
     {
         if (! auth()->user()->can('order.view')) {
@@ -35,9 +40,27 @@ class KitchenBoard extends Component
         $this->statusMessage = $message;
     }
 
-    /**
-     * Advance an order to its next status.
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | Per-order actions
+    |--------------------------------------------------------------------------
+    */
+
+    public function forward(int $orderId): void
+    {
+        if (! auth()->user()->can('order.update-status')) {
+            abort(403);
+        }
+
+        try {
+            $order = Order::findOrFail($orderId);
+            app(OrderService::class)->transition($order, Order::STATUS_PREPARING, auth()->user());
+            $this->flash('success', $order->order_number.' → Kitchen');
+        } catch (\Throwable $e) {
+            $this->flash('error', $e->getMessage());
+        }
+    }
+
     public function advance(int $orderId, string $newStatus): void
     {
         if (! auth()->user()->can('order.update-status')) {
@@ -53,52 +76,212 @@ class KitchenBoard extends Component
         }
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Reject (single + bulk)
+    |--------------------------------------------------------------------------
+    */
+
+    public function openReject(int $orderId): void
+    {
+        if (! auth()->user()->can('order.cancel')) {
+            abort(403);
+        }
+
+        $this->rejectingId = $orderId;
+        $this->rejectReason = '';
+        $this->resetErrorBag();
+        $this->showRejectModal = true;
+        $this->dispatch('open-modal-reject-order');
+    }
+
+    public function openBulkReject(): void
+    {
+        if (! auth()->user()->can('order.cancel')) {
+            abort(403);
+        }
+
+        $pendingCount = Order::query()
+            ->forToday()
+            ->whereIn('status', [Order::STATUS_PENDING, Order::STATUS_CONFIRMED])
+            ->count();
+
+        if ($pendingCount === 0) {
+            $this->flash('error', 'No new orders to reject.');
+            return;
+        }
+
+        $this->rejectingId = null;
+        $this->rejectReason = '';
+        $this->resetErrorBag();
+        $this->showRejectModal = true;
+        $this->dispatch('open-modal-reject-order');
+    }
+
+    public function closeReject(): void
+    {
+        $this->rejectingId = null;
+        $this->rejectReason = '';
+        $this->showRejectModal = false;
+        $this->resetErrorBag();
+        $this->dispatch('close-modal-reject-order');
+    }
+
+    public function confirmReject(): void
+    {
+        if (! auth()->user()->can('order.cancel')) {
+            abort(403);
+        }
+
+        $this->validate([
+            'rejectReason' => 'required|string|min:3|max:255',
+        ], [
+            'rejectReason.required' => 'A reason is required — the customer will see it.',
+            'rejectReason.min'      => 'Please write a clearer reason.',
+        ]);
+
+        $service = app(OrderService::class);
+
+        if ($this->rejectingId !== null) {
+            // Single order
+            try {
+                $order = Order::findOrFail($this->rejectingId);
+                $service->cancel($order, auth()->user(), $this->rejectReason);
+                $this->flash('success', $order->order_number.' rejected — customer wallet refunded.');
+            } catch (\Throwable $e) {
+                $this->flash('error', $e->getMessage());
+            }
+        } else {
+            // Bulk — all pending (and legacy confirmed) today
+            $orders = Order::query()
+                ->forToday()
+                ->whereIn('status', [Order::STATUS_PENDING, Order::STATUS_CONFIRMED])
+                ->get();
+
+            $succeeded = 0;
+            $failed = 0;
+
+            foreach ($orders as $order) {
+                try {
+                    $service->cancel($order, auth()->user(), $this->rejectReason);
+                    $succeeded++;
+                } catch (\Throwable $e) {
+                    $failed++;
+                }
+            }
+
+            $msg = $succeeded.' order'.($succeeded === 1 ? '' : 's').' rejected — wallets refunded.';
+            if ($failed > 0) {
+                $msg .= ' '.$failed.' could not be rejected.';
+            }
+
+            $this->flash($failed > 0 ? 'warning' : 'success', $msg);
+        }
+
+        $this->closeReject();
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Bulk forward
+    |--------------------------------------------------------------------------
+    */
+
+    public function forwardAll(): void
+    {
+        if (! auth()->user()->can('order.update-status')) {
+            abort(403);
+        }
+
+        $orders = Order::query()
+            ->forToday()
+            ->whereIn('status', [Order::STATUS_PENDING, Order::STATUS_CONFIRMED])
+            ->get();
+
+        if ($orders->isEmpty()) {
+            $this->flash('error', 'No new orders to forward.');
+            return;
+        }
+
+        $service = app(OrderService::class);
+        $succeeded = 0;
+        $failed = 0;
+
+        foreach ($orders as $order) {
+            try {
+                $service->transition($order, Order::STATUS_PREPARING, auth()->user());
+                $succeeded++;
+            } catch (\Throwable $e) {
+                $failed++;
+            }
+        }
+
+        $msg = $succeeded.' order'.($succeeded === 1 ? '' : 's').' forwarded to kitchen.';
+        if ($failed > 0) {
+            $msg .= ' '.$failed.' failed.';
+        }
+
+        $this->flash($failed > 0 ? 'warning' : 'success', $msg);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Render
+    |--------------------------------------------------------------------------
+    */
+
     public function render(): View
     {
+        // Two-column-model: New Orders column includes legacy CONFIRMED orders
+        // so any pre-existing rows don't get stuck.
         $columns = [
             [
-                'status' => Order::STATUS_PENDING,
-                'label'  => 'New Orders',
-                'hint'   => 'Confirm to accept',
+                'key'      => 'new',
+                'label'    => 'New Orders',
+                'hint'     => 'Forward to kitchen or reject',
+                'statuses' => [Order::STATUS_PENDING, Order::STATUS_CONFIRMED],
+                'next'     => Order::STATUS_PREPARING,
             ],
             [
-                'status' => Order::STATUS_CONFIRMED,
-                'label'  => 'Confirmed',
-                'hint'   => 'Start preparing when ready',
+                'key'      => 'preparing',
+                'label'    => 'Preparing',
+                'hint'     => 'Mark ready when done',
+                'statuses' => [Order::STATUS_PREPARING],
+                'next'     => Order::STATUS_READY,
             ],
             [
-                'status' => Order::STATUS_PREPARING,
-                'label'  => 'Preparing',
-                'hint'   => 'Mark ready when done',
-            ],
-            [
-                'status' => Order::STATUS_READY,
-                'label'  => 'Ready',
-                'hint'   => 'Hand off to delivery/pickup',
+                'key'      => 'ready',
+                'label'    => 'Ready',
+                'hint'     => 'Hand off to delivery / pickup',
+                'statuses' => [Order::STATUS_READY],
+                'next'     => null,
             ],
         ];
+
+        $allStatuses = array_merge(...array_column($columns, 'statuses'));
 
         $orders = Order::query()
             ->with(['user', 'items'])
             ->forToday()
-            ->whereIn('status', array_column($columns, 'status'))
+            ->whereIn('status', $allStatuses)
             ->orderBy('created_at')
             ->get();
 
         $grouped = [];
         foreach ($columns as $col) {
-            $grouped[$col['status']] = $orders->where('status', $col['status'])->values();
+            $grouped[$col['key']] = $orders
+                ->whereIn('status', $col['statuses'])
+                ->values();
         }
-
-        $completed = Order::query()
-            ->with(['user', 'items'])
-            ->forToday()
-            ->whereIn('status', [Order::STATUS_DELIVERED, Order::STATUS_PICKED_UP])
-            ->count();
 
         $stats = [
             'totalToday' => Order::forToday()->count(),
-            'completed'  => $completed,
+            'completed'  => Order::forToday()
+                                ->whereIn('status', [Order::STATUS_DELIVERED, Order::STATUS_PICKED_UP])
+                                ->count(),
+            'rejected'   => Order::forToday()
+                                ->where('status', Order::STATUS_CANCELLED)
+                                ->count(),
             'active'     => $orders->count(),
         ];
 

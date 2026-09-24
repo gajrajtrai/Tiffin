@@ -1,4 +1,5 @@
 @use('App\Modules\Order\Models\Order')
+
 <div class="space-y-4" wire:poll.15s>
 
     {{-- ─── Header row ─────────────────────────────────────── --}}
@@ -28,8 +29,12 @@
                 <div class="text-[10px] font-medium uppercase tracking-wider text-slate-500">Completed</div>
             </div>
             <div class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-center">
+                <div class="text-2xl font-bold text-rose-600">{{ $stats['rejected'] }}</div>
+                <div class="text-[10px] font-medium uppercase tracking-wider text-slate-500">Rejected</div>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-center">
                 <div class="text-2xl font-bold text-slate-900">{{ $stats['totalToday'] }}</div>
-                <div class="text-[10px] font-medium uppercase tracking-wider text-slate-500">Total Today</div>
+                <div class="text-[10px] font-medium uppercase tracking-wider text-slate-500">Total</div>
             </div>
         </div>
     </div>
@@ -51,81 +56,101 @@
             </p>
         </div>
     @else
-        {{-- ─── Status columns ─────────────────────────────── --}}
-        <div class="grid gap-4 lg:grid-cols-4">
+        @php
+            $colStyles = [
+                'new' => [
+                    'header'   => 'bg-amber-100 text-amber-900',
+                    'border'   => 'border-amber-200',
+                    'btn'      => 'bg-amber-600 hover:bg-amber-700',
+                    'btnAlt'   => 'border-amber-300 text-amber-800 hover:bg-amber-100',
+                ],
+                'preparing' => [
+                    'header'   => 'bg-brand-100 text-brand-900',
+                    'border'   => 'border-brand-200',
+                    'btn'      => 'bg-brand-500 hover:bg-brand-600',
+                    'btnAlt'   => 'border-brand-300 text-brand-800 hover:bg-brand-100',
+                ],
+                'ready' => [
+                    'header'   => 'bg-emerald-100 text-emerald-900',
+                    'border'   => 'border-emerald-200',
+                    'btn'      => 'bg-emerald-600 hover:bg-emerald-700',
+                    'btnAlt'   => 'border-emerald-300 text-emerald-800 hover:bg-emerald-100',
+                ],
+            ];
+        @endphp
 
-            @php
-                $statusStyles = [
-                    'pending'   => [
-                        'header' => 'bg-amber-100 text-amber-900',
-                        'border' => 'border-amber-200',
-                        'ring'   => 'ring-amber-200',
-                        'btn'    => 'bg-amber-600 hover:bg-amber-700',
-                        'badge'  => 'bg-amber-100 text-amber-800',
-                    ],
-                    'confirmed' => [
-                        'header' => 'bg-sky-100 text-sky-900',
-                        'border' => 'border-sky-200',
-                        'ring'   => 'ring-sky-200',
-                        'btn'    => 'bg-sky-600 hover:bg-sky-700',
-                        'badge'  => 'bg-sky-100 text-sky-800',
-                    ],
-                    'preparing' => [
-                        'header' => 'bg-brand-100 text-brand-900',
-                        'border' => 'border-brand-200',
-                        'ring'   => 'ring-brand-200',
-                        'btn'    => 'bg-brand-500 hover:bg-brand-600',
-                        'badge'  => 'bg-brand-100 text-brand-800',
-                    ],
-                    'ready'     => [
-                        'header' => 'bg-emerald-100 text-emerald-900',
-                        'border' => 'border-emerald-200',
-                        'ring'   => 'ring-emerald-200',
-                        'btn'    => 'bg-emerald-600 hover:bg-emerald-700',
-                        'badge'  => 'bg-emerald-100 text-emerald-800',
-                    ],
-                ];
-            @endphp
+        {{-- ─── Status columns ─────────────────────────────── --}}
+        <div class="grid gap-4 lg:grid-cols-3">
 
             @foreach ($columns as $col)
                 @php
-                    $colOrders = $grouped[$col['status']] ?? collect();
-                    $style = $statusStyles[$col['status']];
+                    $colOrders = $grouped[$col['key']] ?? collect();
+                    $style = $colStyles[$col['key']];
                 @endphp
 
                 <div class="flex flex-col rounded-xl border {{ $style['border'] }} bg-slate-50 shadow-sm">
 
                     {{-- Column header --}}
-                    <div class="flex items-center justify-between rounded-t-xl {{ $style['header'] }} px-4 py-3">
-                        <div>
-                            <h2 class="text-sm font-bold">{{ $col['label'] }}</h2>
-                            <p class="text-[10px] uppercase tracking-wider opacity-75">{{ $col['hint'] }}</p>
+                    <div class="rounded-t-xl {{ $style['header'] }} px-4 py-3">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h2 class="text-sm font-bold">{{ $col['label'] }}</h2>
+                                <p class="text-[10px] uppercase tracking-wider opacity-75">{{ $col['hint'] }}</p>
+                            </div>
+                            <div class="flex h-8 w-8 items-center justify-center rounded-full bg-white/40 text-sm font-bold">
+                                {{ $colOrders->count() }}
+                            </div>
                         </div>
-                        <div class="flex h-8 w-8 items-center justify-center rounded-full bg-white/40 text-sm font-bold">
-                            {{ $colOrders->count() }}
-                        </div>
+
+                        {{-- Bulk actions for New Orders --}}
+                        @if ($col['key'] === 'new' && $colOrders->count() > 0 && auth()->user()->can('order.update-status'))
+                            <div class="mt-3 flex gap-2">
+                                <button type="button"
+                                        wire:click="forwardAll"
+                                        wire:confirm="Forward all {{ $colOrders->count() }} new orders to the kitchen?"
+                                        wire:loading.attr="disabled"
+                                        class="flex-1 rounded-lg bg-white/80 px-2 py-1.5 text-xs font-semibold text-amber-900 shadow-sm hover:bg-white">
+                                    <span class="inline-flex items-center gap-1">
+                                        <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/>
+                                        </svg>
+                                        Forward All
+                                    </span>
+                                </button>
+                                @can('order.cancel')
+                                    <button type="button"
+                                            wire:click="openBulkReject"
+                                            wire:loading.attr="disabled"
+                                            class="flex-1 rounded-lg bg-white/80 px-2 py-1.5 text-xs font-semibold text-rose-700 shadow-sm hover:bg-white">
+                                        <span class="inline-flex items-center gap-1">
+                                            <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                            </svg>
+                                            Reject All
+                                        </span>
+                                    </button>
+                                @endcan
+                            </div>
+                        @endif
                     </div>
 
                     {{-- Cards --}}
                     <div class="flex-1 space-y-3 p-3">
                         @forelse ($colOrders as $order)
                             @php
-                                $nextStatus = match ($order->status) {
-                                    Order::STATUS_PENDING   => Order::STATUS_CONFIRMED,
-                                    Order::STATUS_CONFIRMED => Order::STATUS_PREPARING,
-                                    Order::STATUS_PREPARING => Order::STATUS_READY,
-                                    Order::STATUS_READY     => $order->isDelivery()
-                                                                ? Order::STATUS_DELIVERED
-                                                                : Order::STATUS_PICKED_UP,
-                                    default => null,
-                                };
-                                $nextLabel = match ($order->status) {
-                                    Order::STATUS_PENDING   => 'Confirm',
-                                    Order::STATUS_CONFIRMED => 'Start preparing',
-                                    Order::STATUS_PREPARING => 'Mark ready',
-                                    Order::STATUS_READY     => $order->isDelivery() ? 'Mark delivered' : 'Mark picked up',
-                                    default => null,
-                                };
+                                // Determine the per-order action for non-new columns
+                                $advanceStatus = null;
+                                $advanceLabel = null;
+
+                                if ($order->status === Order::STATUS_PREPARING) {
+                                    $advanceStatus = Order::STATUS_READY;
+                                    $advanceLabel = 'Mark Ready';
+                                } elseif ($order->status === Order::STATUS_READY) {
+                                    $advanceStatus = $order->isDelivery() ? Order::STATUS_DELIVERED : Order::STATUS_PICKED_UP;
+                                    $advanceLabel = $order->isDelivery() ? 'Mark Delivered' : 'Mark Picked Up';
+                                }
+
+                                $isNew = in_array($order->status, [Order::STATUS_PENDING, Order::STATUS_CONFIRMED], true);
                             @endphp
 
                             <div class="rounded-lg border border-slate-200 bg-white shadow-sm transition hover:shadow-md">
@@ -183,15 +208,46 @@
                                     </div>
                                 </div>
 
-                                {{-- Action button --}}
-                                @if ($nextStatus && auth()->user()->can('order.update-status'))
-                                    <button type="button"
-                                            wire:click="advance({{ $order->id }}, '{{ $nextStatus }}')"
-                                            wire:loading.attr="disabled"
-                                            wire:target="advance"
-                                            class="w-full rounded-b-lg {{ $style['btn'] }} py-3 text-sm font-bold text-white transition disabled:opacity-50">
-                                        {{ $nextLabel }} →
-                                    </button>
+                                {{-- Action buttons --}}
+                                @if ($isNew)
+                                    {{-- Forward or Reject --}}
+                                    @if (auth()->user()->can('order.update-status'))
+                                        <div class="flex border-t border-slate-100">
+                                            @can('order.cancel')
+                                                <button type="button"
+                                                        wire:click="openReject({{ $order->id }})"
+                                                        wire:loading.attr="disabled"
+                                                        class="flex-1 rounded-bl-lg border-r border-slate-100 py-3 text-xs font-bold text-rose-700 transition hover:bg-rose-50">
+                                                    <span class="inline-flex items-center justify-center gap-1">
+                                                        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/>
+                                                        </svg>
+                                                        Reject
+                                                    </span>
+                                                </button>
+                                            @endcan
+                                            <button type="button"
+                                                    wire:click="forward({{ $order->id }})"
+                                                    wire:loading.attr="disabled"
+                                                    class="flex-1 rounded-br-lg py-3 text-xs font-bold text-white transition {{ $style['btn'] }}">
+                                                <span class="inline-flex items-center justify-center gap-1">
+                                                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/>
+                                                    </svg>
+                                                    Forward to Kitchen
+                                                </span>
+                                            </button>
+                                        </div>
+                                    @endif
+                                @elseif ($advanceStatus)
+                                    @if (auth()->user()->can('order.update-status'))
+                                        <button type="button"
+                                                wire:click="advance({{ $order->id }}, '{{ $advanceStatus }}')"
+                                                wire:loading.attr="disabled"
+                                                class="w-full rounded-b-lg py-3 text-xs font-bold text-white transition {{ $style['btn'] }}">
+                                            {{ $advanceLabel }} →
+                                        </button>
+                                    @endif
                                 @endif
                             </div>
                         @empty
@@ -204,4 +260,45 @@
             @endforeach
         </div>
     @endif
+
+    {{-- ─── Reject modal ───────────────────────────────────── --}}
+    <x-admin.modal name="reject-order" :title="$rejectingId ? 'Reject Order' : 'Reject All New Orders'" maxWidth="md">
+        @if ($showRejectModal)
+            <form wire:submit="confirmReject" class="space-y-4">
+
+                <x-admin.alert type="warning">
+                    @if ($rejectingId)
+                        Rejecting this order will <strong>refund the customer's wallet</strong> automatically. The reason below will appear in their order history.
+                    @else
+                        Rejecting <strong>all new orders</strong> will refund each customer's wallet automatically. The same reason will appear in all their order histories.
+                    @endif
+                </x-admin.alert>
+
+                <div>
+                    <label class="mb-1 block text-xs font-medium text-slate-600">
+                        Reason (visible to customer) <span class="text-rose-500">*</span>
+                    </label>
+                    <textarea wire:model="rejectReason" rows="3"
+                              placeholder="e.g. Kitchen closed early — delivery van broke down"
+                              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"></textarea>
+                    @error('rejectReason') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
+                </div>
+
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" wire:click="closeReject"
+                            class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                            wire:loading.attr="disabled" wire:target="confirmReject"
+                            class="inline-flex items-center gap-2 rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700 disabled:opacity-50">
+                        <span wire:loading.remove wire:target="confirmReject">
+                            {{ $rejectingId ? 'Reject & refund' : 'Reject all & refund' }}
+                        </span>
+                        <span wire:loading wire:target="confirmReject">Rejecting…</span>
+                    </button>
+                </div>
+            </form>
+        @endif
+    </x-admin.modal>
 </div>
