@@ -1,5 +1,31 @@
 <div class="space-y-6">
 
+    {{-- ─── Pending closure requests banner ────────────────── --}}
+    @php
+        $pendingClosures = \App\Models\AccountClosureRequest::pending()->count();
+    @endphp
+
+    @if ($pendingClosures > 0 && auth()->user()->can('user.edit'))
+        <a href="{{ route('admin.users.closure-requests') }}"
+           class="flex items-center gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4 transition hover:border-rose-300">
+            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-rose-100 text-rose-700">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                </svg>
+            </div>
+            <div class="min-w-0 flex-1">
+                <div class="text-sm font-bold text-rose-900">
+                    {{ $pendingClosures }} account closure {{ $pendingClosures === 1 ? 'request' : 'requests' }} pending
+                </div>
+                <div class="text-xs text-rose-700">Click to review</div>
+            </div>
+            <svg class="h-4 w-4 shrink-0 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+        </a>
+    @endif
+
     {{-- ─── Page header ────────────────────────────────────── --}}
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>

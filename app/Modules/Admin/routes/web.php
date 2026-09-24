@@ -52,6 +52,8 @@ Route::middleware(['web', 'auth', 'staff'])
         // Users
         Route::get('/users', UsersIndex::class)
             ->middleware('can:user.view')->name('users.index');
+		Route::get('/users/closure-requests', \App\Modules\Admin\Http\Livewire\ClosureRequestsIndex::class)
+            ->middleware('can:user.edit')->name('users.closure-requests');	
         Route::get('/users/create', UserForm::class)
             ->middleware('can:user.create')->name('users.create');
         Route::get('/users/{user}', UserDetail::class)

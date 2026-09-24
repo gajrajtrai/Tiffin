@@ -22,8 +22,10 @@
                 <div>
                     <div class="text-sm font-bold text-emerald-900">Order placed!</div>
                     <div class="mt-0.5 text-xs text-emerald-700">
-                        We've received your order and it will be prepared for
+                        Thank you for ordering with us. We will do our best to serve you a fresh and savory meal.
+                        We'll have it ready for
                         {{ $order->isDelivery() ? 'delivery to the college gate' : 'pickup at our counter' }} today.
+                        Looking forward to your next order.
                     </div>
                 </div>
             </div>
