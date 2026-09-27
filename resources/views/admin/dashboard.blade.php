@@ -30,58 +30,91 @@
     </div>
 
     {{-- ─── Alerts row ─────────────────────────────────────── --}}
-    @if ($stats['pendingProofs'] > 0 || $stats['lowStockCount'] > 0 || $stats['lowBalanceCount'] > 0)
-        <div class="grid gap-4 sm:grid-cols-3">
-            @if ($stats['pendingProofs'] > 0)
-                <a href="#" class="rounded-xl border border-amber-200 bg-amber-50 p-4 transition hover:border-amber-300">
-                    <div class="flex items-center gap-3">
-                        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-100 text-amber-700">
-                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                            </svg>
-                        </div>
-                        <div>
-                            <div class="text-lg font-bold text-amber-800">{{ $stats['pendingProofs'] }}</div>
-                            <div class="text-xs text-amber-700">Payment proofs pending review</div>
+    {{-- ─── Quick actions + alerts row ─────────────────────── --}}
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+
+        {{-- Kitchen Board — always visible --}}
+        <a href="{{ route('admin.orders.kitchen') }}"
+           class="group rounded-xl border-2 border-brand-200 bg-gradient-to-br from-brand-50 to-brand-100 p-4 shadow-sm transition hover:border-brand-400 hover:shadow-md">
+            <div class="flex items-center gap-3">
+                <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-brand-500 text-white shadow-sm">
+                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
+                    </svg>
+                </div>
+                <div class="min-w-0 flex-1">
+                    <div class="text-lg font-bold text-brand-900">
+                        {{ $stats['pendingPrep'] + $stats['readyCount'] }}
+                    </div>
+                    <div class="text-xs font-semibold text-brand-700">
+                        Open Kitchen Board
+                    </div>
+                    <div class="text-[10px] text-brand-600">
+                        @if ($stats['pendingPrep'] + $stats['readyCount'] === 0)
+                            No active orders — all caught up
+                        @else
+                            {{ $stats['pendingPrep'] }} in prep · {{ $stats['readyCount'] }} ready
+                        @endif
+                    </div>
+                </div>
+                <svg class="h-5 w-5 shrink-0 text-brand-400 transition group-hover:translate-x-0.5 group-hover:text-brand-600"
+                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+            </div>
+        </a>
+
+        {{-- Pending payment proofs --}}
+        @if ($stats['pendingProofs'] > 0)
+            <a href="{{ route('admin.payments.index') }}"
+               class="group rounded-xl border border-amber-200 bg-amber-50 p-4 transition hover:border-amber-300 hover:shadow-md">
+                <div class="flex items-center gap-3">
+                    <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700">
+                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                        </svg>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <div class="text-lg font-bold text-amber-800">{{ $stats['pendingProofs'] }}</div>
+                        <div class="text-xs text-amber-700">
+                            Payment {{ $stats['pendingProofs'] === 1 ? 'proof' : 'proofs' }} pending
                         </div>
                     </div>
-                </a>
-            @endif
+                    <svg class="h-5 w-5 shrink-0 text-amber-400 transition group-hover:translate-x-0.5 group-hover:text-amber-600"
+                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                    </svg>
+                </div>
+            </a>
+        @endif
 
-            @if ($stats['lowStockCount'] > 0)
-                <a href="#" class="rounded-xl border border-rose-200 bg-rose-50 p-4 transition hover:border-rose-300">
-                    <div class="flex items-center gap-3">
-                        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-rose-100 text-rose-700">
-                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
-                            </svg>
-                        </div>
-                        <div>
-                            <div class="text-lg font-bold text-rose-800">{{ $stats['lowStockCount'] }}</div>
-                            <div class="text-xs text-rose-700">Items low on stock</div>
+        {{-- Low stock --}}
+        @if ($stats['lowStockCount'] > 0)
+            <a href="{{ route('admin.inventory.index', ['low' => 1]) }}"
+               class="group rounded-xl border border-rose-200 bg-rose-50 p-4 transition hover:border-rose-300 hover:shadow-md">
+                <div class="flex items-center gap-3">
+                    <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-rose-100 text-rose-700">
+                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                        </svg>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <div class="text-lg font-bold text-rose-800">{{ $stats['lowStockCount'] }}</div>
+                        <div class="text-xs text-rose-700">
+                            {{ $stats['lowStockCount'] === 1 ? 'Item' : 'Items' }} low on stock
                         </div>
                     </div>
-                </a>
-            @endif
-
-            @if ($stats['lowBalanceCount'] > 0)
-                <a href="#" class="rounded-xl border border-slate-200 bg-slate-50 p-4 transition hover:border-slate-300">
-                    <div class="flex items-center gap-3">
-                        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-200 text-slate-700">
-                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
-                            </svg>
-                        </div>
-                        <div>
-                            <div class="text-lg font-bold text-slate-800">{{ $stats['lowBalanceCount'] }}</div>
-                            <div class="text-xs text-slate-700">Customers with low balance</div>
-                        </div>
-                    </div>
-                </a>
-            @endif
-        </div>
-    @endif
-
+                    <svg class="h-5 w-5 shrink-0 text-rose-400 transition group-hover:translate-x-0.5 group-hover:text-rose-600"
+                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                    </svg>
+                </div>
+            </a>
+        @endif
+    </div>
     {{-- ─── Today's orders ─────────────────────────────────── --}}
     <div>
         <div class="mb-3 flex items-center justify-between">
