@@ -1,0 +1,10 @@
+# Caddyfile.example
+# Copy this to caddy\Caddyfile and adjust the root path for your machine.
+
+http://0.0.0.0:80 {
+    root * C:\path\to\tiffin\public
+    encode gzip
+    try_files {path} {path}/ /index.php?{query}
+    php_fastcgi 127.0.0.1:9000
+    file_server
+}

@@ -38,3 +38,12 @@ yarn-error.log
 /opencode.json
 /opencode.jsonc
 *.ps1*.txt
+# Caddy binary and runtime (machine-specific, large)
+/caddy/caddy.exe
+/caddy/nssm.exe
+/caddy/data/
+/caddy/config/
+/caddy/*.log
+
+# Machine-specific startup scripts
+/startweb.bat
