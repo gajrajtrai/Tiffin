@@ -5,6 +5,7 @@ namespace App\Modules\Admin\Http\Livewire;
 use App\Modules\Order\Models\Order;
 use App\Modules\Order\Services\OrderService;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -20,9 +21,7 @@ class OrderDetail extends Component
 
     public function mount(Order $order): void
     {
-        if (! auth()->user()->can('order.view')) {
-            abort(403);
-        }
+        Gate::authorize('view', $order);
 
         $this->order = $order->load(['user', 'items', 'walletTransaction']);
     }
@@ -47,11 +46,9 @@ class OrderDetail extends Component
     |--------------------------------------------------------------------------
     */
 
-	public function advance(string $newStatus): void
+    public function advance(string $newStatus): void
     {
-        if (! auth()->user()->can('order.update-status')) {
-            abort(403);
-        }
+        Gate::authorize('advance', $this->order);
 
         try {
             $this->order = app(OrderService::class)
@@ -65,9 +62,7 @@ class OrderDetail extends Component
 
     public function cancel(): void
     {
-        if (! auth()->user()->can('order.cancel')) {
-            abort(403);
-        }
+        Gate::authorize('cancel', $this->order);
 
         $this->validate([
             'cancelReason' => 'required|string|min:3|max:255',
@@ -97,12 +92,12 @@ class OrderDetail extends Component
     public function render(): View
     {
         $nextActions = match ($this->order->status) {
-            Order::STATUS_PENDING   => [['status' => Order::STATUS_CONFIRMED, 'label' => 'Confirm order',  'variant' => 'brand']],
-            Order::STATUS_CONFIRMED => [['status' => Order::STATUS_PREPARING, 'label' => 'Start preparing', 'variant' => 'brand']],
-            Order::STATUS_PREPARING => [['status' => Order::STATUS_READY,     'label' => 'Mark ready',      'variant' => 'success']],
+            Order::STATUS_PENDING,
+            Order::STATUS_CONFIRMED => [['status' => Order::STATUS_PREPARING, 'label' => 'Forward to Kitchen', 'variant' => 'brand']],
+            Order::STATUS_PREPARING => [['status' => Order::STATUS_READY,     'label' => 'Mark Ready',      'variant' => 'success']],
             Order::STATUS_READY     => $this->order->isDelivery()
-                                        ? [['status' => Order::STATUS_DELIVERED, 'label' => 'Mark delivered', 'variant' => 'success']]
-                                        : [['status' => Order::STATUS_PICKED_UP, 'label' => 'Mark picked up', 'variant' => 'success']],
+                                        ? [['status' => Order::STATUS_DELIVERED, 'label' => 'Mark Delivered', 'variant' => 'success']]
+                                        : [['status' => Order::STATUS_PICKED_UP, 'label' => 'Mark Picked Up', 'variant' => 'success']],
             default                 => [],
         };
 

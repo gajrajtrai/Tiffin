@@ -5,6 +5,7 @@ namespace App\Modules\Admin\Http\Livewire;
 use App\Modules\Order\Models\Order;
 use App\Modules\Order\Services\OrderService;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -14,16 +15,13 @@ class KitchenBoard extends Component
     public ?string $statusMessage = null;
     public ?string $statusType = null;
 
-    // Reject modal
     public bool $showRejectModal = false;
-    public ?int $rejectingId = null;   // null + showRejectModal = bulk reject
+    public ?int $rejectingId = null;
     public string $rejectReason = '';
 
     public function mount(): void
     {
-        if (! auth()->user()->can('order.view')) {
-            abort(403);
-        }
+        Gate::authorize('viewAny', Order::class);
     }
 
     public function layoutData(): array
@@ -48,12 +46,10 @@ class KitchenBoard extends Component
 
     public function forward(int $orderId): void
     {
-        if (! auth()->user()->can('order.update-status')) {
-            abort(403);
-        }
+        $order = Order::findOrFail($orderId);
+        Gate::authorize('forward', $order);
 
         try {
-            $order = Order::findOrFail($orderId);
             app(OrderService::class)->transition($order, Order::STATUS_PREPARING, auth()->user());
             $this->flash('success', $order->order_number.' → Kitchen');
         } catch (\Throwable $e) {
@@ -63,12 +59,10 @@ class KitchenBoard extends Component
 
     public function advance(int $orderId, string $newStatus): void
     {
-        if (! auth()->user()->can('order.update-status')) {
-            abort(403);
-        }
+        $order = Order::findOrFail($orderId);
+        Gate::authorize('advance', $order);
 
         try {
-            $order = Order::findOrFail($orderId);
             app(OrderService::class)->transition($order, $newStatus, auth()->user());
             $this->flash('success', $order->order_number.' → '.$order->fresh()->statusLabel());
         } catch (\Throwable $e) {
@@ -84,9 +78,8 @@ class KitchenBoard extends Component
 
     public function openReject(int $orderId): void
     {
-        if (! auth()->user()->can('order.cancel')) {
-            abort(403);
-        }
+        $order = Order::findOrFail($orderId);
+        Gate::authorize('cancel', $order);
 
         $this->rejectingId = $orderId;
         $this->rejectReason = '';
@@ -97,9 +90,7 @@ class KitchenBoard extends Component
 
     public function openBulkReject(): void
     {
-        if (! auth()->user()->can('order.cancel')) {
-            abort(403);
-        }
+        Gate::authorize('viewAny', Order::class);
 
         $pendingCount = Order::query()
             ->forToday()
@@ -129,9 +120,7 @@ class KitchenBoard extends Component
 
     public function confirmReject(): void
     {
-        if (! auth()->user()->can('order.cancel')) {
-            abort(403);
-        }
+        Gate::authorize('viewAny', Order::class);
 
         $this->validate([
             'rejectReason' => 'required|string|min:3|max:255',
@@ -143,16 +132,16 @@ class KitchenBoard extends Component
         $service = app(OrderService::class);
 
         if ($this->rejectingId !== null) {
-            // Single order
+            $order = Order::findOrFail($this->rejectingId);
+            Gate::authorize('cancel', $order);
+
             try {
-                $order = Order::findOrFail($this->rejectingId);
                 $service->cancel($order, auth()->user(), $this->rejectReason);
                 $this->flash('success', $order->order_number.' rejected — customer wallet refunded.');
             } catch (\Throwable $e) {
                 $this->flash('error', $e->getMessage());
             }
         } else {
-            // Bulk — all pending (and legacy confirmed) today
             $orders = Order::query()
                 ->forToday()
                 ->whereIn('status', [Order::STATUS_PENDING, Order::STATUS_CONFIRMED])
@@ -162,6 +151,11 @@ class KitchenBoard extends Component
             $failed = 0;
 
             foreach ($orders as $order) {
+                if (! auth()->user()->can('cancel', $order)) {
+                    $failed++;
+                    continue;
+                }
+
                 try {
                     $service->cancel($order, auth()->user(), $this->rejectReason);
                     $succeeded++;
@@ -189,9 +183,7 @@ class KitchenBoard extends Component
 
     public function forwardAll(): void
     {
-        if (! auth()->user()->can('order.update-status')) {
-            abort(403);
-        }
+        Gate::authorize('viewAny', Order::class);
 
         $orders = Order::query()
             ->forToday()
@@ -208,6 +200,11 @@ class KitchenBoard extends Component
         $failed = 0;
 
         foreach ($orders as $order) {
+            if (! auth()->user()->can('forward', $order)) {
+                $failed++;
+                continue;
+            }
+
             try {
                 $service->transition($order, Order::STATUS_PREPARING, auth()->user());
                 $succeeded++;
@@ -283,7 +280,7 @@ class KitchenBoard extends Component
             'active'     => $orders->count(),
         ];
 
-        // ─── Prep summary — item-wise quantities for today ────────
+        // Prep summary — items still in play (pending/preparing/ready)
         $prepRows = \App\Modules\Order\Models\OrderItem::query()
             ->selectRaw('
                 item_name,

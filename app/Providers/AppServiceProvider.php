@@ -3,6 +3,9 @@
 namespace App\Providers;
 
 use App\Modules\Core\Models\Setting;
+use App\Modules\Order\Models\Order;
+use App\Policies\OrderPolicy;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
 
@@ -15,16 +18,34 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        $this->registerPolicies();
         $this->overrideAppNameFromSettings();
     }
 
-    /**
-     * At request time, replace config('app.name') with the value from
-     * the settings table. All existing views keep working unchanged.
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | Authorization
+    |--------------------------------------------------------------------------
+    */
+
+    protected function registerPolicies(): void
+    {
+        Gate::policy(Order::class, OrderPolicy::class);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Settings-driven app name
+    |--------------------------------------------------------------------------
+    |
+    | Replaces config('app.name') with the value from the settings table,
+    | so every view that references config('app.name') reflects the current
+    | restaurant name.
+    |
+    */
+
     protected function overrideAppNameFromSettings(): void
     {
-        // Skip during console commands (migrations, seeders, tinker)
         if (app()->runningInConsole()) {
             return;
         }

@@ -4,6 +4,7 @@ namespace App\Modules\Customer\Http\Livewire;
 
 use App\Modules\Order\Models\Order;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -19,10 +20,8 @@ class CustomerOrderDetail extends Component
             return;
         }
 
-        // Only the owner can view — staff view this from the admin panel
-        if ($order->user_id !== auth()->id()) {
-            abort(403);
-        }
+        // Policy: customers see their own orders; staff with order.view see all
+        Gate::authorize('view', $order);
 
         $this->order = $order->load(['items', 'walletTransaction']);
     }
