@@ -7,6 +7,7 @@ use App\Modules\Expense\Models\ExpenseCategory;
 use App\Modules\Supplier\Models\Supplier;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -24,7 +25,7 @@ class ExpensesIndex extends Component
     public string $categoryFilter = '';
 
     #[Url(as: 'show', except: 'active')]
-    public string $showFilter = 'active'; // active | voided | all
+    public string $showFilter = 'active';
 
     #[Url(as: 'from', except: '')]
     public string $from = '';
@@ -35,15 +36,12 @@ class ExpensesIndex extends Component
     public ?string $statusMessage = null;
     public ?string $statusType = null;
 
-    // Void modal
     public ?int $voidingId = null;
     public string $voidReason = '';
 
     public function mount(): void
     {
-        if (! auth()->user()->can('expense.view')) {
-            abort(403);
-        }
+        Gate::authorize('viewAny', Expense::class);
 
         if ($this->from === '') {
             $this->from = now()->startOfMonth()->toDateString();
@@ -93,28 +91,28 @@ class ExpensesIndex extends Component
 
     /*
     |--------------------------------------------------------------------------
-    | Void / Delete
+    | Void
     |--------------------------------------------------------------------------
     */
 
     public function openVoid(int $id): void
     {
-        if (! auth()->user()->can('expense.delete')) {
-            abort(403);
-        }
-
         $expense = Expense::findOrFail($id);
 
-        if ($expense->isGrLinked()) {
-            $this->statusType = 'error';
-            $this->statusMessage = 'GR-linked expenses are managed from the goods receipt and cannot be voided here.';
-            return;
-        }
+        if (! auth()->user()->can('void', $expense)) {
+            if ($expense->isGrLinked()) {
+                $this->statusType = 'error';
+                $this->statusMessage = 'GR-linked expenses are managed from the goods receipt and cannot be voided here.';
+                return;
+            }
 
-        if ($expense->isVoided()) {
-            $this->statusType = 'error';
-            $this->statusMessage = 'This expense is already voided.';
-            return;
+            if ($expense->isVoided()) {
+                $this->statusType = 'error';
+                $this->statusMessage = 'This expense is already voided.';
+                return;
+            }
+
+            abort(403);
         }
 
         $this->voidingId = $id;
@@ -133,10 +131,6 @@ class ExpensesIndex extends Component
 
     public function voidExpense(): void
     {
-        if (! auth()->user()->can('expense.delete')) {
-            abort(403);
-        }
-
         $this->validate([
             'voidReason' => 'required|string|min:3|max:255',
         ], [
@@ -145,12 +139,7 @@ class ExpensesIndex extends Component
         ]);
 
         $expense = Expense::findOrFail($this->voidingId);
-
-        if ($expense->isGrLinked()) {
-            $this->statusType = 'error';
-            $this->statusMessage = 'GR-linked expenses cannot be voided here.';
-            return;
-        }
+        Gate::authorize('void', $expense);
 
         $expense->voided_at = now();
         $expense->voided_by = auth()->id();
@@ -165,17 +154,8 @@ class ExpensesIndex extends Component
 
     public function deleteDraft(int $id): void
     {
-        if (! auth()->user()->can('expense.delete')) {
-            abort(403);
-        }
-
         $expense = Expense::findOrFail($id);
-
-        if (! $expense->canBeDeleted()) {
-            $this->statusType = 'error';
-            $this->statusMessage = 'Only drafts without receipts can be deleted. Use Void for committed expenses.';
-            return;
-        }
+        Gate::authorize('delete', $expense);
 
         $expense->clearMediaCollection(Expense::MEDIA_RECEIPT);
         $expense->delete();
@@ -203,7 +183,6 @@ class ExpensesIndex extends Component
             ->with(['category', 'supplier', 'goodsReceipt'])
             ->whereBetween('expense_date', [$fromStr, $toStr]);
 
-        // Show filter
         if ($this->showFilter === 'active') {
             $query->active();
         } elseif ($this->showFilter === 'voided') {
@@ -225,7 +204,6 @@ class ExpensesIndex extends Component
 
         $expenses = $query->orderByDesc('expense_date')->orderByDesc('id')->paginate(25);
 
-        // ─── KPI stats (active only) ─────────────────────────────
         $rangeQuery = Expense::query()
             ->whereBetween('expense_date', [$fromStr, $toStr])
             ->active();
@@ -243,7 +221,6 @@ class ExpensesIndex extends Component
                                     ->count(),
         ];
 
-        // Category totals for the range — active only
         $categoryBreakdown = ExpenseCategory::query()
             ->select('expense_categories.id', 'expense_categories.name', 'expense_categories.color')
             ->withSum(['expenses as total' => function ($q) use ($fromStr, $toStr) {

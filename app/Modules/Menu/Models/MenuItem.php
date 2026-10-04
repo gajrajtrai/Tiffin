@@ -179,4 +179,12 @@ class MenuItem extends Model implements HasMedia
             ->whereDate('service_date', today())
             ->exists();
     }
+	    /**
+     * A menu item can only be deleted if it has never been part of an
+     * order. Otherwise the safe path is to set it inactive.
+     */
+    public function canBeDeleted(): bool
+    {
+        return ! $this->orderItems()->exists();
+    }
 }

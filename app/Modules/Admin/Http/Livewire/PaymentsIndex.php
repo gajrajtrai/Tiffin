@@ -5,6 +5,7 @@ namespace App\Modules\Admin\Http\Livewire;
 use App\Modules\Payment\Models\PaymentProof;
 use App\Modules\Payment\Services\PaymentProofService;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -27,12 +28,12 @@ class PaymentsIndex extends Component
     public ?int $reviewingId = null;
     public string $approvalAmount = '';
     public string $rejectionReason = '';
+
     public function mount(): void
     {
-        if (! auth()->user()->can('payment.view')) {
-            abort(403);
-        }
+        Gate::authorize('viewAny', PaymentProof::class);
     }
+
     public function updating(string $name): void
     {
         if (in_array($name, ['statusFilter', 'search'], true)) {
@@ -66,10 +67,6 @@ class PaymentsIndex extends Component
 
     public function approve(): void
     {
-        if (! auth()->user()->can('payment.verify')) {
-            abort(403);
-        }
-
         $this->validate([
             'approvalAmount' => 'required|numeric|min:1|max:50000',
         ], [
@@ -78,11 +75,12 @@ class PaymentsIndex extends Component
             'approvalAmount.max'      => 'Maximum single credit is 50,000.',
         ]);
 
+        $proof = PaymentProof::findOrFail($this->reviewingId);
+        Gate::authorize('verify', $proof);
+
         $amount = (float) $this->approvalAmount;
 
         try {
-            $proof = PaymentProof::findOrFail($this->reviewingId);
-
             app(PaymentProofService::class)->approve(
                 proof:          $proof,
                 admin:          auth()->user(),
@@ -102,10 +100,6 @@ class PaymentsIndex extends Component
 
     public function reject(): void
     {
-        if (! auth()->user()->can('payment.reject')) {
-            abort(403);
-        }
-
         $this->validate([
             'rejectionReason' => 'required|string|min:3|max:255',
         ], [
@@ -113,9 +107,10 @@ class PaymentsIndex extends Component
             'rejectionReason.min'      => 'Please write a clearer reason.',
         ]);
 
-        try {
-            $proof = PaymentProof::findOrFail($this->reviewingId);
+        $proof = PaymentProof::findOrFail($this->reviewingId);
+        Gate::authorize('reject', $proof);
 
+        try {
             app(PaymentProofService::class)->reject(
                 proof:  $proof,
                 admin:  auth()->user(),

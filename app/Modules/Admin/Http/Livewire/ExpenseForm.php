@@ -5,6 +5,7 @@ namespace App\Modules\Admin\Http\Livewire;
 use App\Modules\Expense\Models\Expense;
 use App\Modules\Expense\Models\ExpenseCategory;
 use App\Modules\Supplier\Models\Supplier;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -34,9 +35,7 @@ class ExpenseForm extends Component
     public function mount(?Expense $expense = null): void
     {
         if ($expense && $expense->exists) {
-            if (! auth()->user()->can('expense.edit')) {
-                abort(403);
-            }
+            Gate::authorize('update', $expense);
 
             $this->expense = $expense;
             $this->expense_category_id = (string) $expense->expense_category_id;
@@ -49,9 +48,7 @@ class ExpenseForm extends Component
             $this->status = $expense->status;
             $this->notes = (string) $expense->notes;
         } else {
-            if (! auth()->user()->can('expense.create')) {
-                abort(403);
-            }
+            Gate::authorize('create', Expense::class);
 
             $this->expense_date = today()->toDateString();
         }

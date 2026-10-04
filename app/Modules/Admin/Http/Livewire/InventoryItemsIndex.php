@@ -3,6 +3,7 @@
 namespace App\Modules\Admin\Http\Livewire;
 
 use App\Modules\Inventory\Models\InventoryItem;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
@@ -25,9 +26,7 @@ class InventoryItemsIndex extends Component
 
     public function mount(): void
     {
-        if (! auth()->user()->can('inventory.view')) {
-            abort(403);
-        }
+        Gate::authorize('viewAny', \App\Modules\Inventory\Models\InventoryItem::class);
     }
 
     public function updating(string $name): void

@@ -3,6 +3,7 @@
 namespace App\Modules\Admin\Http\Livewire;
 
 use App\Modules\Menu\Models\MenuItem;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -30,9 +31,7 @@ class MenuItemForm extends Component
     public function mount(?MenuItem $item = null): void
     {
         if ($item && $item->exists) {
-            if (! auth()->user()->can('menu.edit')) {
-                abort(403);
-            }
+            Gate::authorize('update', $item);
 
             $this->item = $item;
             $this->name = $item->name;
@@ -43,9 +42,7 @@ class MenuItemForm extends Component
             $this->sort_order = (int) $item->sort_order;
             $this->is_active = (bool) $item->is_active;
         } else {
-            if (! auth()->user()->can('menu.create')) {
-                abort(403);
-            }
+            Gate::authorize('create', MenuItem::class);
         }
     }
 

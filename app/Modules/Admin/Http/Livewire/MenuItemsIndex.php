@@ -4,6 +4,7 @@ namespace App\Modules\Admin\Http\Livewire;
 
 use App\Modules\Menu\Models\MenuItem;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -26,6 +27,11 @@ class MenuItemsIndex extends Component
     public ?string $statusMessage = null;
     public ?string $statusType = null;
 
+    public function mount(): void
+    {
+        Gate::authorize('viewAny', MenuItem::class);
+    }
+
     public function updating(string $name): void
     {
         if (in_array($name, ['search', 'typeFilter', 'dietFilter'], true)) {
@@ -43,11 +49,9 @@ class MenuItemsIndex extends Component
 
     public function toggleActive(int $itemId): void
     {
-        if (! auth()->user()->can('menu.edit')) {
-            abort(403);
-        }
-
         $item = MenuItem::findOrFail($itemId);
+        Gate::authorize('update', $item);
+
         $item->is_active = ! $item->is_active;
         $item->save();
 
@@ -57,14 +61,10 @@ class MenuItemsIndex extends Component
 
     public function delete(int $itemId): void
     {
-        if (! auth()->user()->can('menu.delete')) {
-            abort(403);
-        }
-
         $item = MenuItem::findOrFail($itemId);
+        Gate::authorize('delete', $item);
 
-        // Prevent deletion if item is part of any past order
-        if ($item->orderItems()->exists()) {
+        if (! $item->canBeDeleted()) {
             $this->statusType = 'error';
             $this->statusMessage = 'Cannot delete "'.$item->name.'" — it appears in order history. Set it inactive instead.';
             return;
@@ -106,10 +106,10 @@ class MenuItemsIndex extends Component
         $items = $query->ordered()->paginate(15);
 
         $counts = [
-            'total'      => MenuItem::count(),
-            'mains'      => MenuItem::mains()->count(),
-            'fastfood'   => MenuItem::fastFood()->count(),
-            'active'     => MenuItem::active()->count(),
+            'total'    => MenuItem::count(),
+            'mains'    => MenuItem::mains()->count(),
+            'fastfood' => MenuItem::fastFood()->count(),
+            'active'   => MenuItem::active()->count(),
         ];
 
         return view('admin.menu.index', compact('items', 'counts'));

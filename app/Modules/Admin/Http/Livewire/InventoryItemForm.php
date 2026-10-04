@@ -3,6 +3,7 @@
 namespace App\Modules\Admin\Http\Livewire;
 
 use App\Modules\Inventory\Models\InventoryItem;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -25,9 +26,7 @@ class InventoryItemForm extends Component
     public function mount(?InventoryItem $item = null): void
     {
         if ($item && $item->exists) {
-            if (! auth()->user()->can('inventory.adjust')) {
-                abort(403);
-            }
+            Gate::authorize('update', $item);
 
             $this->item = $item;
             $this->name = $item->name;
@@ -40,9 +39,7 @@ class InventoryItemForm extends Component
             $this->is_active = (bool) $item->is_active;
             $this->notes = (string) $item->notes;
         } else {
-            if (! auth()->user()->can('inventory.adjust')) {
-                abort(403);
-            }
+            Gate::authorize('create', InventoryItem::class);
         }
     }
 

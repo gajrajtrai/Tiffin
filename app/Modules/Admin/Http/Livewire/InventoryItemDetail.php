@@ -6,6 +6,7 @@ use App\Modules\Inventory\Models\InventoryItem;
 use App\Modules\Inventory\Models\StockMovement;
 use App\Modules\Inventory\Services\StockService;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -33,9 +34,7 @@ class InventoryItemDetail extends Component
 
     public function mount(InventoryItem $item): void
     {
-        if (! auth()->user()->can('inventory.view')) {
-            abort(403);
-        }
+        Gate::authorize('view', $item);
 
         $this->item = $item;
         $this->stockInCost = (string) $item->unit_cost;
@@ -68,9 +67,7 @@ class InventoryItemDetail extends Component
 
     public function stockIn(): void
     {
-        if (! auth()->user()->can('inventory.adjust')) {
-            abort(403);
-        }
+        Gate::authorize('adjust', $this->item);
 
         $this->validate([
             'stockInQuantity' => 'required|numeric|min:0.001|max:999999',
@@ -104,9 +101,7 @@ class InventoryItemDetail extends Component
 
     public function stockOut(): void
     {
-        if (! auth()->user()->can('inventory.adjust')) {
-            abort(403);
-        }
+        Gate::authorize('adjust', $this->item);
 
         $this->validate([
             'stockOutQuantity' => 'required|numeric|min:0.001|max:999999',
@@ -136,9 +131,7 @@ class InventoryItemDetail extends Component
 
     public function recordWaste(): void
     {
-        if (! auth()->user()->can('inventory.adjust')) {
-            abort(403);
-        }
+        Gate::authorize('adjust', $this->item);
 
         $this->validate([
             'wasteQuantity' => 'required|numeric|min:0.001|max:999999',
@@ -168,9 +161,7 @@ class InventoryItemDetail extends Component
 
     public function adjustStock(): void
     {
-        if (! auth()->user()->can('inventory.adjust')) {
-            abort(403);
-        }
+        Gate::authorize('adjust', $this->item);
 
         $this->validate([
             'countQuantity' => 'required|numeric|min:0|max:999999',
