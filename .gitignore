@@ -47,3 +47,5 @@ yarn-error.log
 
 # Machine-specific startup scripts
 /startweb.bat
+/caddy/caddy-start.bat
+/caddy/php-cgi.bat
