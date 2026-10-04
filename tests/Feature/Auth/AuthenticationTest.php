@@ -19,8 +19,9 @@ test('users can authenticate using the login screen', function () {
 
     $response
         ->assertSessionHasNoErrors()
-        ->assertRedirect(route('dashboard', absolute: false));
-
+		// Staff go to /admin/dashboard; customers (no role) go to /menu.
+		// This factory user has no role, so expect the customer landing.
+		->assertRedirect(route('menu.index', absolute: false));
     $this->assertAuthenticated();
 });
 

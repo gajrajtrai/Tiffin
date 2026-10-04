@@ -19,7 +19,7 @@
             @csrf
 
             {{-- Hidden token --}}
-            <input type="hidden" name="token" value="{{ $request->route('token') }}" />
+            <input type="hidden" name="token" value="{{ request()->route('token') }}" />
 
             {{-- Email --}}
             <div>
@@ -29,7 +29,7 @@
                 <input type="email"
                        id="email"
                        name="email"
-                       value="{{ old('email', $request->email) }}"
+                       value="{{ old('email', request()->query('email')) }}"
                        required
                        autofocus
                        autocomplete="email"

@@ -21,6 +21,11 @@ class FortifyServiceProvider extends ServiceProvider
             \Laravel\Fortify\Contracts\LoginResponse::class,
             \App\Http\Responses\LoginResponse::class,
         );
+
+        $this->app->singleton(
+            \Laravel\Fortify\Contracts\RegisterResponse::class,
+            \App\Http\Responses\RegisterResponse::class,
+        );
     }
 
     public function boot(): void
@@ -121,20 +126,10 @@ class FortifyServiceProvider extends ServiceProvider
 
     private function configureRedirects(): void
     {
-        Fortify::redirects('register', function () {
-            $user = auth()->user();
+        // Login and Register redirects are handled by the response contracts
+        // (LoginResponse, RegisterResponse) bound in register() above.
 
-            if (! $user) {
-                return '/';
-            }
-
-            if ($user->isStaff()) {
-                return route('admin.dashboard');
-            }
-
-            return route('menu.index');
-        });
-
+        // Email verification (not currently required) — send to menu or admin.
         Fortify::redirects('email-verification', function () {
             $user = auth()->user();
 
