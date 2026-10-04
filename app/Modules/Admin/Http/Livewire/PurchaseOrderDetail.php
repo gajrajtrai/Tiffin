@@ -5,6 +5,7 @@ namespace App\Modules\Admin\Http\Livewire;
 use App\Modules\Supplier\Models\PurchaseOrder;
 use App\Modules\Supplier\Services\GoodsReceiptService;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -20,9 +21,7 @@ class PurchaseOrderDetail extends Component
 
     public function mount(PurchaseOrder $po): void
     {
-        if (! auth()->user()->can('purchase.view')) {
-            abort(403);
-        }
+        Gate::authorize('view', $po);
 
         $this->po = $po->load(['supplier', 'items.inventoryItem', 'goodsReceipts']);
     }
@@ -43,13 +42,12 @@ class PurchaseOrderDetail extends Component
 
     public function markSent(): void
     {
-        if (! auth()->user()->can('purchase.edit')) {
+        if (! auth()->user()->can('send', $this->po)) {
+            if (! $this->po->isDraft()) {
+                $this->flash('error', 'Only draft POs can be marked as sent.');
+                return;
+            }
             abort(403);
-        }
-
-        if (! $this->po->isDraft()) {
-            $this->flash('error', 'Only draft POs can be marked as sent.');
-            return;
         }
 
         $this->po->status = PurchaseOrder::STATUS_SENT;
@@ -62,7 +60,11 @@ class PurchaseOrderDetail extends Component
 
     public function cancel(): void
     {
-        if (! auth()->user()->can('purchase.edit')) {
+        if (! auth()->user()->can('cancel', $this->po)) {
+            if (! $this->po->isCancellable()) {
+                $this->flash('error', 'This PO cannot be cancelled in its current state.');
+                return;
+            }
             abort(403);
         }
 
@@ -71,11 +73,6 @@ class PurchaseOrderDetail extends Component
         ], [
             'cancelReason.required' => 'A reason is required.',
         ]);
-
-        if (! $this->po->isCancellable()) {
-            $this->flash('error', 'This PO cannot be cancelled in its current state.');
-            return;
-        }
 
         $this->po->status = PurchaseOrder::STATUS_CANCELLED;
         $this->po->cancelled_at = now();
@@ -93,18 +90,16 @@ class PurchaseOrderDetail extends Component
      */
     public function createReceipt()
     {
-        if (! auth()->user()->can('purchase.receive')) {
+        if (! auth()->user()->can('receive', $this->po)) {
+            if (! in_array($this->po->status, [
+                PurchaseOrder::STATUS_SENT,
+                PurchaseOrder::STATUS_PARTIALLY_RECEIVED,
+            ], true)) {
+                $this->flash('error', 'This PO is not in a state to receive goods.');
+                return null;
+            }
             abort(403);
         }
-
-        if (! in_array($this->po->status, [
-            PurchaseOrder::STATUS_SENT,
-            PurchaseOrder::STATUS_PARTIALLY_RECEIVED,
-        ], true)) {
-            $this->flash('error', 'This PO is not in a state to receive goods.');
-            return null;
-        }
-
         try {
             $gr = app(GoodsReceiptService::class)->buildFromPurchaseOrder($this->po);
 

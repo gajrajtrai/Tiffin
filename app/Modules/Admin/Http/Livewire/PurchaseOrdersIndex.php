@@ -5,6 +5,7 @@ namespace App\Modules\Admin\Http\Livewire;
 use App\Modules\Supplier\Models\PurchaseOrder;
 use App\Modules\Supplier\Models\Supplier;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -26,9 +27,7 @@ class PurchaseOrdersIndex extends Component
 
     public function mount(): void
     {
-        if (! auth()->user()->can('purchase.view')) {
-            abort(403);
-        }
+        Gate::authorize('viewAny', \App\Modules\Supplier\Models\PurchaseOrder::class);
     }
 
     public function updating(string $name): void

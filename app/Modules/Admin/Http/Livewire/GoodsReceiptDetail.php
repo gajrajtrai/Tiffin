@@ -6,6 +6,7 @@ use App\Modules\Supplier\Models\GoodsReceipt;
 use App\Modules\Supplier\Services\GoodsReceiptService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -27,9 +28,7 @@ class GoodsReceiptDetail extends Component
 
     public function mount(GoodsReceipt $gr): void
     {
-        if (! auth()->user()->can('purchase.view')) {
-            abort(403);
-        }
+        Gate::authorize('view', $gr);
 
         $this->gr = $gr->load(['items.inventoryItem', 'purchaseOrder', 'supplier', 'receivedBy', 'expense']);
         $this->loadLines();
@@ -103,13 +102,12 @@ class GoodsReceiptDetail extends Component
      */
     public function saveChanges(): void
     {
-        if (! auth()->user()->can('purchase.edit')) {
+        if (! auth()->user()->can('update', $this->gr)) {
+            if (! $this->gr->isDraft()) {
+                $this->flash('error', 'Only draft receipts can be edited.');
+                return;
+            }
             abort(403);
-        }
-
-        if (! $this->gr->isDraft()) {
-            $this->flash('error', 'Only draft receipts can be edited.');
-            return;
         }
 
         DB::transaction(function () {
@@ -131,13 +129,12 @@ class GoodsReceiptDetail extends Component
      */
     public function removeLine(int $itemId): void
     {
-        if (! auth()->user()->can('purchase.edit')) {
+        if (! auth()->user()->can('update', $this->gr)) {
+            if (! $this->gr->isDraft()) {
+                $this->flash('error', 'Only draft receipts can be edited.');
+                return;
+            }
             abort(403);
-        }
-
-        if (! $this->gr->isDraft()) {
-            $this->flash('error', 'Only draft receipts can be edited.');
-            return;
         }
 
         $item = $this->gr->items->firstWhere('id', $itemId);
@@ -164,13 +161,12 @@ class GoodsReceiptDetail extends Component
 
     public function confirm(): void
     {
-        if (! auth()->user()->can('purchase.receive')) {
+        if (! auth()->user()->can('confirm', $this->gr)) {
+            if (! $this->gr->isDraft()) {
+                $this->flash('error', 'Only draft receipts can be confirmed.');
+                return;
+            }
             abort(403);
-        }
-
-        if (! $this->gr->isDraft()) {
-            $this->flash('error', 'Only draft receipts can be confirmed.');
-            return;
         }
 
         // Persist any pending line edits first
@@ -200,13 +196,12 @@ class GoodsReceiptDetail extends Component
 
     public function deleteReceipt()
     {
-        if (! auth()->user()->can('purchase.edit')) {
+        if (! auth()->user()->can('delete', $this->gr)) {
+            if (! $this->gr->isDraft()) {
+                $this->flash('error', 'Confirmed receipts cannot be deleted.');
+                return null;
+            }
             abort(403);
-        }
-
-        if (! $this->gr->isDraft()) {
-            $this->flash('error', 'Confirmed receipts cannot be deleted.');
-            return null;
         }
 
         $this->gr->items()->delete();

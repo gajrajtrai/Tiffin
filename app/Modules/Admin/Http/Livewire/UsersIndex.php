@@ -4,6 +4,7 @@ namespace App\Modules\Admin\Http\Livewire;
 
 use App\Models\User;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -23,6 +24,11 @@ class UsersIndex extends Component
 
     #[Url(as: 'status', except: 'all')]
     public string $statusFilter = 'all';
+
+    public function mount(): void
+    {
+        Gate::authorize('viewAny', User::class);
+    }
 
     public function updating(string $name): void
     {
@@ -73,12 +79,12 @@ class UsersIndex extends Component
         $roles = Role::orderBy('name')->pluck('name');
 
         $counts = [
-            'total'      => User::count(),
-            'customers'  => User::role('Customer')->count(),
-            'staff'      => User::whereHas('roles', function ($q) {
+            'total'     => User::count(),
+            'customers' => User::role('Customer')->count(),
+            'staff'     => User::whereHas('roles', function ($q) {
                                 $q->whereIn('name', ['Admin', 'Manager', 'Kitchen Staff', 'Delivery Staff']);
                             })->count(),
-            'suspended'  => User::where('status', 'suspended')->count(),
+            'suspended' => User::where('status', 'suspended')->count(),
         ];
 
         return view('admin.users.index', compact('users', 'roles', 'counts'));

@@ -5,6 +5,7 @@ namespace App\Modules\Admin\Http\Livewire;
 use App\Models\User;
 use App\Modules\Payment\Services\WalletService;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -30,9 +31,7 @@ class UserDetail extends Component
 
     public function mount(User $user): void
     {
-        if (! auth()->user()->can('user.view')) {
-            abort(403);
-        }
+        Gate::authorize('view', $user);
 
         $this->user = $user->load('roles');
     }
@@ -59,13 +58,12 @@ class UserDetail extends Component
 
     public function toggleStatus(): void
     {
-        if (! auth()->user()->can('user.edit')) {
+        if (! auth()->user()->can('toggleStatus', $this->user)) {
+            if ($this->user->id === auth()->id()) {
+                $this->flash('error', 'You cannot suspend your own account.');
+                return;
+            }
             abort(403);
-        }
-
-        if ($this->user->id === auth()->id()) {
-            $this->flash('error', 'You cannot suspend your own account.');
-            return;
         }
 
         $this->user->status = $this->user->status === 'active' ? 'suspended' : 'active';
@@ -76,9 +74,7 @@ class UserDetail extends Component
 
     public function creditWallet(): void
     {
-        if (! auth()->user()->can('wallet.credit')) {
-            abort(403);
-        }
+        Gate::authorize('creditWallet', $this->user);
 
         $this->validate([
             'creditAmount' => 'required|numeric|min:1|max:50000',
@@ -109,9 +105,7 @@ class UserDetail extends Component
 
     public function debitWallet(): void
     {
-        if (! auth()->user()->can('wallet.debit')) {
-            abort(403);
-        }
+        Gate::authorize('debitWallet', $this->user);
 
         $this->validate([
             'debitAmount' => 'required|numeric|min:1|max:50000',

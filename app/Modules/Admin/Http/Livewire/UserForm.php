@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Spatie\Permission\Models\Role;
@@ -27,9 +28,7 @@ class UserForm extends Component
     public function mount(?User $user = null): void
     {
         if ($user && $user->exists) {
-            if (! auth()->user()->can('user.edit')) {
-                abort(403);
-            }
+            Gate::authorize('update', $user);
 
             // Prevent editing Customer accounts through this form
             if ($user->hasRole('Customer') && $user->roles->count() === 1) {
@@ -45,9 +44,7 @@ class UserForm extends Component
             $this->status = $user->status;
             $this->selectedRoles = $user->roles->pluck('name')->all();
         } else {
-            if (! auth()->user()->can('user.create')) {
-                abort(403);
-            }
+            Gate::authorize('create', User::class);
         }
     }
 

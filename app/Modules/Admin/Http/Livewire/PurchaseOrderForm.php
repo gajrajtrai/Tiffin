@@ -8,6 +8,7 @@ use App\Modules\Supplier\Models\PurchaseOrderItem;
 use App\Modules\Supplier\Models\Supplier;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -31,9 +32,7 @@ class PurchaseOrderForm extends Component
     public function mount(?PurchaseOrder $po = null): void
     {
         if ($po && $po->exists) {
-            if (! auth()->user()->can('purchase.edit')) {
-                abort(403);
-            }
+            Gate::authorize('update', $po);
 
             if (! $po->isEditable()) {
                 session()->flash('error', 'Only draft POs can be edited.');
@@ -55,9 +54,7 @@ class PurchaseOrderForm extends Component
                 'unit_cost'         => (float) $i->unit_cost,
             ])->all();
         } else {
-            if (! auth()->user()->can('purchase.create')) {
-                abort(403);
-            }
+            Gate::authorize('create', PurchaseOrder::class);
 
             $this->order_date = today()->toDateString();
             $this->addItem(); // start with one blank line

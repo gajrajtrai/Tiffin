@@ -31,10 +31,13 @@ class AppServiceProvider extends ServiceProvider
     protected function registerPolicies(): void
     {
         Gate::policy(Order::class, OrderPolicy::class);
+        Gate::policy(\App\Models\User::class, \App\Policies\UserPolicy::class);
         Gate::policy(\App\Modules\Menu\Models\MenuItem::class, \App\Policies\MenuItemPolicy::class);
         Gate::policy(\App\Modules\Payment\Models\PaymentProof::class, \App\Policies\PaymentProofPolicy::class);
         Gate::policy(\App\Modules\Expense\Models\Expense::class, \App\Policies\ExpensePolicy::class);
         Gate::policy(\App\Modules\Inventory\Models\InventoryItem::class, \App\Policies\InventoryItemPolicy::class);
+        Gate::policy(\App\Modules\Supplier\Models\PurchaseOrder::class, \App\Policies\PurchaseOrderPolicy::class);
+        Gate::policy(\App\Modules\Supplier\Models\GoodsReceipt::class, \App\Policies\GoodsReceiptPolicy::class);
     }
 
     /*
