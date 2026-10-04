@@ -29,6 +29,13 @@ class DailyPublisher extends Component
 
         if ($this->date === '') {
             $this->date = today()->toDateString();
+            return;
+        }
+
+        // Clamp: if a URL carries a past date, snap it forward to today.
+        $requested = \Illuminate\Support\Carbon::parse($this->date);
+        if ($requested->lt(today())) {
+            $this->date = today()->toDateString();
         }
     }
 
@@ -59,7 +66,14 @@ class DailyPublisher extends Component
 
     public function previousDay(): void
     {
-        $this->date = $this->selectedDate()->subDay()->toDateString();
+        $target = $this->selectedDate()->subDay();
+
+        // Never navigate to a date before today
+        if ($target->lt(today())) {
+            return;
+        }
+
+        $this->date = $target->toDateString();
     }
 
     public function nextDay(): void

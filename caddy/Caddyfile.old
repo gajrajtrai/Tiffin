@@ -1,0 +1,15 @@
+# C:\tiffin\caddy\Caddyfile
+
+:80 {
+    root * C:\tiffin\public
+
+    encode gzip
+
+    # Try the actual file, then index.php, then fall back to routing through index.php
+    try_files {path} {path}/ /index.php?{query}
+
+    # Pass PHP requests to the FastCGI worker
+    php_fastcgi 127.0.0.1:9000
+
+    file_server
+}

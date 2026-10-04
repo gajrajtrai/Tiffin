@@ -18,9 +18,14 @@
         <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
 
             <div class="flex flex-wrap items-center gap-2">
+                @php
+                    $currentWeekStart = now()->startOfWeek(\Illuminate\Support\Carbon::MONDAY);
+                    $atCurrentWeek = $dates[0]->startOfWeek(\Illuminate\Support\Carbon::MONDAY)->lte($currentWeekStart);
+                @endphp
                 <button type="button" wire:click="previousWeek"
-                        class="rounded-lg border border-slate-300 bg-white p-2 text-slate-600 hover:bg-slate-50"
-                        title="Previous week">
+                        @disabled($atCurrentWeek)
+                        class="rounded-lg border border-slate-300 bg-white p-2 text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-white"
+                        title="{{ $atCurrentWeek ? 'Cannot go before the current week' : 'Previous week' }}">
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
                     </svg>

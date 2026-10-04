@@ -232,8 +232,6 @@ class KitchenBoard extends Component
 
     public function render(): View
     {
-        // Two-column-model: New Orders column includes legacy CONFIRMED orders
-        // so any pre-existing rows don't get stuck.
         $columns = [
             [
                 'key'      => 'new',
@@ -285,6 +283,36 @@ class KitchenBoard extends Component
             'active'     => $orders->count(),
         ];
 
-        return view('admin.orders.kitchen', compact('columns', 'grouped', 'stats'));
+        // ─── Prep summary — item-wise quantities for today ────────
+        $prepRows = \App\Modules\Order\Models\OrderItem::query()
+            ->selectRaw('
+                item_name,
+                item_type,
+                is_veg,
+                SUM(quantity) as total_qty,
+                SUM(CASE WHEN quantity > 0 THEN 1 ELSE 0 END) as line_count
+            ')
+            ->whereHas('order', function ($q) {
+                $q->forToday()
+                  ->whereNotIn('status', [
+                      Order::STATUS_CANCELLED,
+                      Order::STATUS_DELIVERED,
+                      Order::STATUS_PICKED_UP,
+                  ]);
+            })
+            ->groupBy('item_name', 'item_type', 'is_veg')
+            ->orderByDesc('total_qty')
+            ->get();
+
+        $prepMains = $prepRows->where('item_type', 'main')->values();
+        $prepFastFood = $prepRows->where('item_type', 'fastfood')->values();
+
+        return view('admin.orders.kitchen', compact(
+            'columns',
+            'grouped',
+            'stats',
+            'prepMains',
+            'prepFastFood',
+        ));
     }
 }

@@ -1,0 +1,13 @@
+# C:\tiffin\caddy\Caddyfile
+
+# Serve HTTPS on port 443 for the server IP
+https://192.168.8.67 {
+    root * C:\tiffin\public
+    encode gzip
+    try_files {path} {path}/ /index.php?{query}
+    php_fastcgi 127.0.0.1:9000
+    file_server
+
+    # Generate a locally-trusted certificate
+    tls internal
+}

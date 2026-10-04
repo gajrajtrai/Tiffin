@@ -1,0 +1,11 @@
+<service>
+  <id>caddy</id>
+  <name>Caddy Web Server</name>
+  <description>Caddy HTTP server serving the Tiffin application.</description>
+  <executable>%BASE%\caddy.exe</executable>
+  <arguments>run --config %BASE%\Caddyfile</arguments>
+  <log mode="roll-by-time">
+    <pattern>yyyy-MM-dd</pattern>
+  </log>
+  <onfailure action="restart" delay="5 sec" />
+</service>

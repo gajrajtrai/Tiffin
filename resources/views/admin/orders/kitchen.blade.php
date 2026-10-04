@@ -79,6 +79,92 @@
             ];
         @endphp
 
+        {{-- ─── Prep summary — item-wise totals for today ──── --}}
+        @if ($prepMains->isNotEmpty() || $prepFastFood->isNotEmpty())
+            <div class="rounded-xl border border-slate-200 bg-white shadow-sm">
+                <div class="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+                    <div>
+                        <h2 class="text-sm font-bold text-slate-900">Today's Prep Summary</h2>
+                        <p class="mt-0.5 text-xs text-slate-500">
+                            To Be prepared list — excludes delivered, picked up, and cancelled
+                        </p>
+                    </div>
+                    <div class="text-right text-xs text-slate-500">
+                        {{ now()->format('g:i A') }}
+                    </div>
+                </div>
+
+                <div class="grid gap-0 sm:grid-cols-2 sm:divide-x sm:divide-slate-200">
+
+                    {{-- Mains --}}
+                    <div class="p-4">
+                        <div class="mb-3 flex items-center gap-2">
+                            <span class="inline-flex h-5 w-5 items-center justify-center rounded bg-brand-100 text-[10px] font-bold text-brand-700">M</span>
+                            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-600">Main Courses</h3>
+                            @if ($prepMains->isEmpty())
+                                <span class="ml-auto text-[10px] text-slate-400">—</span>
+                            @else
+                                <span class="ml-auto text-[10px] font-semibold text-slate-500">
+                                    {{ $prepMains->sum('total_qty') }} total
+                                </span>
+                            @endif
+                        </div>
+
+                        @if ($prepMains->isEmpty())
+                            <p class="text-xs text-slate-400">No mains ordered today.</p>
+                        @else
+                            <ul class="space-y-2">
+                                @foreach ($prepMains as $row)
+                                    <li class="flex items-center gap-3">
+                                        <span class="{{ $row->is_veg ? 'text-emerald-600' : 'text-rose-600' }}">●</span>
+                                        <span class="min-w-0 flex-1 truncate text-sm font-medium text-slate-800">
+                                            {{ $row->item_name }}
+                                        </span>
+                                        <span class="inline-flex min-w-[2.5rem] justify-center rounded-md bg-brand-500 px-2 py-0.5 text-sm font-bold text-white">
+                                            {{ (int) $row->total_qty }}
+                                        </span>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        @endif
+                    </div>
+
+                    {{-- Fast Food --}}
+                    <div class="border-t border-slate-200 p-4 sm:border-t-0">
+                        <div class="mb-3 flex items-center gap-2">
+                            <span class="inline-flex h-5 w-5 items-center justify-center rounded bg-sky-100 text-[10px] font-bold text-sky-700">F</span>
+                            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-600">Fast Food</h3>
+                            @if ($prepFastFood->isEmpty())
+                                <span class="ml-auto text-[10px] text-slate-400">—</span>
+                            @else
+                                <span class="ml-auto text-[10px] font-semibold text-slate-500">
+                                    {{ $prepFastFood->sum('total_qty') }} total
+                                </span>
+                            @endif
+                        </div>
+
+                        @if ($prepFastFood->isEmpty())
+                            <p class="text-xs text-slate-400">No fast food ordered today.</p>
+                        @else
+                            <ul class="space-y-2">
+                                @foreach ($prepFastFood as $row)
+                                    <li class="flex items-center gap-3">
+                                        <span class="{{ $row->is_veg ? 'text-emerald-600' : 'text-rose-600' }}">●</span>
+                                        <span class="min-w-0 flex-1 truncate text-sm font-medium text-slate-800">
+                                            {{ $row->item_name }}
+                                        </span>
+                                        <span class="inline-flex min-w-[2.5rem] justify-center rounded-md bg-sky-500 px-2 py-0.5 text-sm font-bold text-white">
+                                            {{ (int) $row->total_qty }}
+                                        </span>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        @endif
+
         {{-- ─── Status columns ─────────────────────────────── --}}
         <div class="grid gap-4 lg:grid-cols-3">
 

@@ -124,3 +124,61 @@ Schedule::call(function () {
     ->name('session-prune')
     ->dailyAt('04:00')
     ->timezone('Asia/Thimphu');
+/*
+ * ─── Auto-cancel untouched orders ────────────────────────────────
+ * Runs at 22:00 daily. Any order from today still in "pending"
+ * status (never forwarded to kitchen) is cancelled with a full
+ * wallet refund. PREPARING and READY orders are left for manual
+ * handling — the kitchen already engaged with them.
+ */
+Schedule::call(function () {
+    $service = app(\App\Modules\Order\Services\OrderService::class);
+
+    // No admin user to attribute the action to — pass null; the service
+    // uses auth()->user() when available, but for scheduled tasks it
+    // can accept null and skip the causer.
+    $systemUser = \App\Models\User::whereHas('roles', fn ($q) => $q->where('name', 'Admin'))
+        ->first();
+
+    if (! $systemUser) {
+        \Illuminate\Support\Facades\Log::warning('[AUTO-CANCEL] No admin user found — skipping.');
+        return;
+    }
+
+    $orders = \App\Modules\Order\Models\Order::query()
+        ->whereDate('service_date', today())
+        ->whereIn('status', [
+            \App\Modules\Order\Models\Order::STATUS_PENDING,
+            \App\Modules\Order\Models\Order::STATUS_CONFIRMED,
+        ])
+        ->get();
+
+    if ($orders->isEmpty()) {
+        return;
+    }
+
+    $cancelled = 0;
+    $failed = 0;
+
+    foreach ($orders as $order) {
+        try {
+            $service->cancel(
+                order:      $order,
+                performedBy: $systemUser,
+                reason:     'Order not processed in time — auto-cancelled',
+            );
+            $cancelled++;
+        } catch (\Throwable $e) {
+            $failed++;
+        }
+    }
+
+    \Illuminate\Support\Facades\Log::info(sprintf(
+        '[AUTO-CANCEL] %d order(s) auto-cancelled and refunded; %d failed.',
+        $cancelled,
+        $failed,
+    ));
+})
+    ->name('auto-cancel-unprocessed-orders')
+    ->dailyAt('22:00')
+    ->timezone('Asia/Thimphu');

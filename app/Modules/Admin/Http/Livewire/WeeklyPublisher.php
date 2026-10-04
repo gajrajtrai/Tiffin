@@ -28,6 +28,15 @@ class WeeklyPublisher extends Component
 
         if ($this->weekStart === '') {
             $this->weekStart = now()->startOfWeek(Carbon::MONDAY)->toDateString();
+            return;
+        }
+
+        // Clamp: if a URL carries a past week, snap it to the current week.
+        $requested = Carbon::parse($this->weekStart)->startOfWeek(Carbon::MONDAY);
+        $currentWeekStart = now()->startOfWeek(Carbon::MONDAY);
+
+        if ($requested->lt($currentWeekStart)) {
+            $this->weekStart = $currentWeekStart->toDateString();
         }
     }
 
@@ -66,7 +75,15 @@ class WeeklyPublisher extends Component
 
     public function previousWeek(): void
     {
-        $this->weekStart = $this->weekStartDate()->subWeek()->toDateString();
+        $target = $this->weekStartDate()->subWeek();
+        $currentWeekStart = now()->startOfWeek(Carbon::MONDAY);
+
+        // Never navigate to a week before the current one
+        if ($target->lt($currentWeekStart)) {
+            return;
+        }
+
+        $this->weekStart = $target->toDateString();
     }
 
     public function nextWeek(): void
