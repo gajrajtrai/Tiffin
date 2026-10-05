@@ -8,8 +8,7 @@
                 Viewing orders for <strong>{{ $date->format('l, F j, Y') }}</strong>
             </p>
         </div>
-		
-		        <div class="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+        <div class="flex flex-wrap items-center gap-2 self-start sm:self-auto">
             @can('order.update-status')
                 <a href="{{ route('admin.orders.manual') }}"
                    class="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-brand-600">
@@ -19,10 +18,6 @@
                     New Manual Order
                 </a>
             @endcan
-            <a href="{{ route('admin.orders.kitchen') }}"
-               class="inline-flex items-center gap-2 rounded-lg border border-brand-500 bg-white px-4 py-2 text-sm font-semibold text-brand-600 hover:bg-brand-50">
-		
-        <div class="flex flex-wrap items-center gap-2 self-start sm:self-auto">
             <a href="{{ route('admin.orders.kitchen') }}"
                class="inline-flex items-center gap-2 rounded-lg border border-brand-500 bg-white px-4 py-2 text-sm font-semibold text-brand-600 hover:bg-brand-50">
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -117,8 +112,13 @@
             @foreach ($orders as $order)
                 <tr class="hover:bg-slate-50">
                     <td class="px-4 py-3">
-                        <div class="font-mono text-xs font-semibold text-slate-700">{{ $order->order_number }}</div>
-                        <div class="text-[10px] text-slate-400">{{ $order->created_at->format('H:i') }}</div>
+                        <div class="font-mono text-xs text-slate-500">{{ $order->order_number }}</div>
+                        <div class="text-xs text-slate-400">{{ $order->created_at->format('H:i') }}</div>
+                        @if ($order->isManual())
+                            <span class="mt-0.5 inline-block rounded bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-800">
+                                Manual
+                            </span>
+                        @endif
                     </td>
                     <td class="px-4 py-3">
                         <div class="font-medium text-slate-900">{{ $order->user->name }}</div>
@@ -128,7 +128,7 @@
                         <div class="text-xs text-slate-600">
                             @foreach ($order->items as $item)
                                 <span class="{{ $item->is_veg ? 'text-emerald-600' : 'text-rose-600' }}">●</span>
-                                {{ $item->item_name }}@if(!$loop->last)<span class="text-slate-400">, </span>@endif
+                                @if ($item->quantity > 1){{ $item->quantity }}× @endif{{ $item->item_name }}@if(!$loop->last)<span class="text-slate-400">, </span>@endif
                             @endforeach
                         </div>
                     </td>

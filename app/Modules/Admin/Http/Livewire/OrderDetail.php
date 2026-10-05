@@ -23,7 +23,7 @@ class OrderDetail extends Component
     {
         Gate::authorize('view', $order);
 
-        $this->order = $order->load(['user', 'items', 'walletTransaction']);
+        $this->order = $order->load(['user', 'items', 'walletTransaction', 'enteredBy']);
     }
 
     public function layoutData(): array
@@ -48,7 +48,15 @@ class OrderDetail extends Component
 
     public function advance(string $newStatus): void
     {
-        Gate::authorize('advance', $this->order);
+        // Pending/Confirmed → Preparing is a "forward" (a special permission
+        // path); everything else uses "advance". The two policies check
+        // different state rules, so we pick the right one here.
+        $policy = in_array($this->order->status, [
+            Order::STATUS_PENDING,
+            Order::STATUS_CONFIRMED,
+        ], true) ? 'forward' : 'advance';
+
+        Gate::authorize($policy, $this->order);
 
         try {
             $this->order = app(OrderService::class)
@@ -81,6 +89,28 @@ class OrderDetail extends Component
         } catch (\Throwable $e) {
             $this->flash('error', $e->getMessage());
         }
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Payment confirmation (for manual cash orders)
+    |--------------------------------------------------------------------------
+    */
+
+    public function markPaid(): void
+    {
+        Gate::authorize('view', $this->order);
+
+        if ($this->order->payment_status === 'paid') {
+            $this->flash('error', 'Order is already marked paid.');
+            return;
+        }
+
+        $this->order->payment_status = 'paid';
+        $this->order->save();
+        $this->order->refresh();
+
+        $this->flash('success', 'Payment recorded.');
     }
 
     /*

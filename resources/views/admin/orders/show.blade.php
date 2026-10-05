@@ -1,3 +1,5 @@
+@use('App\Modules\Order\Models\Order')
+
 <div class="mx-auto max-w-4xl space-y-6">
 
     {{-- ─── Back link ──────────────────────────────────────── --}}
@@ -31,7 +33,14 @@
                     @else
                         <x-admin.badge variant="slate">Pickup</x-admin.badge>
                     @endif
-                    <x-admin.badge variant="success">Paid from wallet</x-admin.badge>
+                    @if ($order->payment_status === 'paid')
+                        <x-admin.badge variant="success">Paid</x-admin.badge>
+                    @else
+                        <x-admin.badge variant="warning">Payment pending</x-admin.badge>
+                    @endif
+                    @if ($order->isManual())
+                        <x-admin.badge variant="brand">Manual</x-admin.badge>
+                    @endif
                 </div>
                 <div class="mt-2 text-sm text-slate-600">
                     Service date: <strong>{{ $order->service_date->format('l, F j, Y') }}</strong>
@@ -55,6 +64,15 @@
                                        {{ $action['variant'] === 'success' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-brand-500 hover:bg-brand-600' }}">
                             {{ $action['label'] }}
                         </button>
+					    @if ($order->payment_status !== 'paid' && $order->status !== Order::STATUS_CANCELLED)
+							<button type="button" wire:click="markPaid"
+                            wire:confirm="Mark this order as paid? Use this after collecting cash."
+                            wire:loading.attr="disabled" wire:target="markPaid"
+                            class="rounded-lg border border-emerald-300 bg-white px-4 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-50 disabled:opacity-50">
+                        <i class="fas fa-money-bill-wave me-1"></i>
+                        Mark paid
+                    </button>
+                @endif
                     @endforeach
                 @endcan
 
