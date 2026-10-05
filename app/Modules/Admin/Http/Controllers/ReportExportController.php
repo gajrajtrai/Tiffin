@@ -2,30 +2,25 @@
 
 namespace App\Modules\Admin\Http\Controllers;
 
+use App\Http\Requests\ExportReportRequest;
 use App\Modules\Expense\Models\Expense;
 use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderItem;
 use App\Models\User;
-use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReportExportController
 {
-    public function __invoke(Request $request): StreamedResponse
+    public function __invoke(ExportReportRequest $request): StreamedResponse
     {
-        if (! auth()->user()?->can('report.export')) {
-            abort(403);
-        }
-
-        $type = $request->string('type', 'orders')->toString();
-        $from = Carbon::parse($request->input('from', now()->startOfMonth()->toDateString()))->startOfDay();
-        $to = Carbon::parse($request->input('to', today()->toDateString()))->endOfDay();
+        $type = $request->exportType();
+        $from = $request->fromDate();
+        $to = $request->toDate();
         $fromStr = $from->toDateString();
         $toStr = $to->toDateString();
 
         $filename = sprintf(
-            'tamkulay-%s-%s-to-%s.csv',
+            'chula-tiffins-%s-%s-to-%s.csv',
             $type,
             $fromStr,
             $toStr,
@@ -36,7 +31,6 @@ class ReportExportController
             'items'     => $this->exportItems($fromStr, $toStr, $filename),
             'customers' => $this->exportCustomers($fromStr, $toStr, $filename),
             'expenses'  => $this->exportExpenses($fromStr, $toStr, $filename),
-            default     => abort(404, 'Unknown export type.'),
         };
     }
 
@@ -73,7 +67,7 @@ class ReportExportController
                 ->chunk(500, function ($orders) use ($out) {
                     foreach ($orders as $order) {
                         $items = $order->items
-                            ->map(fn ($i) => $i->item_name)
+                            ->map(fn ($i) => ($i->quantity > 1 ? $i->quantity.'× ' : '').$i->item_name)
                             ->implode(' | ');
 
                         fputcsv($out, [
@@ -114,6 +108,7 @@ class ReportExportController
                 'Type',
                 'Diet',
                 'Orders',
+                'Quantity Sold',
                 'Revenue (Nu.)',
             ]);
 
@@ -131,7 +126,7 @@ class ReportExportController
                       ->where('status', '!=', Order::STATUS_CANCELLED);
                 })
                 ->groupBy('item_name', 'item_type', 'is_veg')
-                ->orderByDesc('order_count')
+                ->orderByDesc('total_quantity')
                 ->chunk(500, function ($rows) use ($out) {
                     foreach ($rows as $row) {
                         fputcsv($out, [
@@ -139,6 +134,7 @@ class ReportExportController
                             $row->item_type === 'main' ? 'Main' : 'Fast Food',
                             $row->is_veg ? 'Veg' : 'Non-Veg',
                             $row->order_count,
+                            $row->total_quantity,
                             number_format((float) $row->revenue, 2, '.', ''),
                         ]);
                     }
