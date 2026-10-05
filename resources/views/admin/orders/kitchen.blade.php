@@ -120,9 +120,37 @@
                                         <span class="min-w-0 flex-1 truncate text-sm font-medium text-slate-800">
                                             {{ $row->item_name }}
                                         </span>
+
+                                        @if ($row->is_sold_out)
+                                            <span class="rounded bg-rose-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-rose-700">
+                                                Sold out
+                                            </span>
+                                        @endif
+
                                         <span class="inline-flex min-w-[2.5rem] justify-center rounded-md bg-brand-500 px-2 py-0.5 text-sm font-bold text-white">
                                             {{ (int) $row->total_qty }}
                                         </span>
+
+                                        @can('menu.publish')
+                                            @if ($row->is_sold_out)
+                                                <button type="button"
+                                                        wire:click="toggleSoldOut({{ $row->menu_item_id }})"
+                                                        wire:loading.attr="disabled"
+                                                        class="rounded-md border border-emerald-300 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-700 transition hover:bg-emerald-50"
+                                                        title="Make available again">
+                                                    Restock
+                                                </button>
+                                            @else
+                                                <button type="button"
+                                                        wire:click="toggleSoldOut({{ $row->menu_item_id }})"
+                                                        wire:confirm="Mark {{ $row->item_name }} as sold out? New orders will be blocked."
+                                                        wire:loading.attr="disabled"
+                                                        class="rounded-md border border-slate-300 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-600 transition hover:bg-rose-50 hover:border-rose-300 hover:text-rose-700"
+                                                        title="Mark sold out">
+                                                    Sold out
+                                                </button>
+                                            @endif
+                                        @endcan
                                     </li>
                                 @endforeach
                             </ul>
@@ -153,9 +181,37 @@
                                         <span class="min-w-0 flex-1 truncate text-sm font-medium text-slate-800">
                                             {{ $row->item_name }}
                                         </span>
+
+                                        @if ($row->is_sold_out)
+                                            <span class="rounded bg-rose-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-rose-700">
+                                                Sold out
+                                            </span>
+                                        @endif
+
                                         <span class="inline-flex min-w-[2.5rem] justify-center rounded-md bg-sky-500 px-2 py-0.5 text-sm font-bold text-white">
                                             {{ (int) $row->total_qty }}
                                         </span>
+
+                                        @can('menu.publish')
+                                            @if ($row->is_sold_out)
+                                                <button type="button"
+                                                        wire:click="toggleSoldOut({{ $row->menu_item_id }})"
+                                                        wire:loading.attr="disabled"
+                                                        class="rounded-md border border-emerald-300 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-700 transition hover:bg-emerald-50"
+                                                        title="Make available again">
+                                                    Restock
+                                                </button>
+                                            @else
+                                                <button type="button"
+                                                        wire:click="toggleSoldOut({{ $row->menu_item_id }})"
+                                                        wire:confirm="Mark {{ $row->item_name }} as sold out? New orders will be blocked."
+                                                        wire:loading.attr="disabled"
+                                                        class="rounded-md border border-slate-300 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-600 transition hover:bg-rose-50 hover:border-rose-300 hover:text-rose-700"
+                                                        title="Mark sold out">
+                                                    Sold out
+                                                </button>
+                                            @endif
+                                        @endcan
                                     </li>
                                 @endforeach
                             </ul>

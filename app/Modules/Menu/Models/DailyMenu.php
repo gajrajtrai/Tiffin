@@ -10,38 +10,24 @@ use RuntimeException;
 
 class DailyMenu extends Model
 {
-    /**
-     * Explicit table name — "daily_menu" is singular by design (it's a pivot-ish table).
-     */
     protected $table = 'daily_menu';
 
     protected $fillable = [
-        'menu_item_id', 'service_date',
+        'menu_item_id', 'service_date', 'sold_out_at',
     ];
 
     protected function casts(): array
     {
         return [
             'service_date' => 'date',
+            'sold_out_at'  => 'datetime',
         ];
     }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Relationships
-    |--------------------------------------------------------------------------
-    */
 
     public function menuItem(): BelongsTo
     {
         return $this->belongsTo(MenuItem::class);
     }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Scopes
-    |--------------------------------------------------------------------------
-    */
 
     public function scopeForDate(Builder $q, Carbon|string $date): Builder
     {
@@ -50,25 +36,13 @@ class DailyMenu extends Model
 
     /*
     |--------------------------------------------------------------------------
-    | Static helpers
+    | Constants & publish helpers (unchanged)
     |--------------------------------------------------------------------------
     */
 
-    /**
-     * Maximum main courses allowed per service day.
-     */
     public const MAX_MAINS_PER_DAY = 2;
 
-    /**
-     * Publish a list of menu items for a given date.
-     *
-     * Enforces the max-2-mains rule. Returns the array of published item IDs.
-     * Throws if the rule would be violated.
-     *
-     * @param  array<int>  $menuItemIds
-     * @return array<int>
-     */
-        public static function publish(Carbon|string $date, array $menuItemIds): array
+    public static function publish(Carbon|string $date, array $menuItemIds): array
     {
         $dateString = Carbon::parse($date)->toDateString();
 
@@ -76,7 +50,6 @@ class DailyMenu extends Model
             ->whereIn('id', $menuItemIds)
             ->get();
 
-        // Which mains are NOT already published for this date?
         $alreadyPublishedIds = static::query()
             ->forDate($dateString)
             ->pluck('menu_item_id')
@@ -111,11 +84,6 @@ class DailyMenu extends Model
         return $items->pluck('id')->all();
     }
 
-    /**
-     * Unpublish items for a date. Pass null to clear the entire day.
-     *
-     * @param  array<int>|null  $menuItemIds
-     */
     public static function unpublish(Carbon|string $date, ?array $menuItemIds = null): int
     {
         $query = static::query()->forDate($date);
@@ -127,9 +95,6 @@ class DailyMenu extends Model
         return $query->delete();
     }
 
-    /**
-     * Is a specific item published on a given date?
-     */
     public static function isPublished(Carbon|string $date, int $menuItemId): bool
     {
         return static::query()
@@ -138,9 +103,6 @@ class DailyMenu extends Model
             ->exists();
     }
 
-    /**
-     * Number of mains currently published for a date.
-     */
     public static function mainCountForDate(Carbon|string $date): int
     {
         return static::query()
@@ -149,18 +111,68 @@ class DailyMenu extends Model
             ->count();
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Sold-out helpers (new)
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Is a specific item sold out on a given date?
+     */
+    public static function isSoldOut(Carbon|string $date, int $menuItemId): bool
+    {
+        return static::query()
+            ->forDate($date)
+            ->where('menu_item_id', $menuItemId)
+            ->whereNotNull('sold_out_at')
+            ->exists();
+    }
+
+    /**
+     * Mark an item sold out (or restock it) for a given date.
+     * Returns true if it was marked sold out, false if it was restocked.
+     */
+    public static function toggleSoldOut(Carbon|string $date, int $menuItemId): bool
+    {
+        $daily = static::query()
+            ->forDate($date)
+            ->where('menu_item_id', $menuItemId)
+            ->first();
+
+        if (! $daily) {
+            throw new RuntimeException('This item is not published for that date.');
+        }
+
+        $nowSoldOut = $daily->sold_out_at === null;
+        $daily->sold_out_at = $nowSoldOut ? now() : null;
+        $daily->save();
+
+        return $nowSoldOut;
+    }
+
     /**
      * Full published menu for a date, grouped by type.
-     *
-     * @return array{main: \Illuminate\Support\Collection, fastfood: \Illuminate\Support\Collection}
+     * Each item is annotated with `is_sold_out` so the view can show the badge.
      */
     public static function publishedForDate(Carbon|string $date): array
     {
+        $dateString = Carbon::parse($date)->toDateString();
+
+        $dailyMenus = static::query()
+            ->whereDate('service_date', $dateString)
+            ->get()
+            ->keyBy('menu_item_id');
+
         $items = MenuItem::query()
             ->active()
             ->ordered()
-            ->whereHas('dailyMenus', fn ($q) => $q->forDate($date))
-            ->get();
+            ->whereIn('id', $dailyMenus->keys())
+            ->get()
+            ->each(function (MenuItem $item) use ($dailyMenus) {
+                $daily = $dailyMenus->get($item->id);
+                $item->setAttribute('is_sold_out', $daily && $daily->sold_out_at !== null);
+            });
 
         return [
             'main'     => $items->where('type', 'main')->values(),

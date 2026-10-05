@@ -106,7 +106,15 @@ class MenuBrowse extends Component
             return false;
         }
 
-        return DailyMenu::isPublished(today(), $menuItemId);
+        if (! DailyMenu::isPublished(today(), $menuItemId)) {
+            return false;
+        }
+
+        if (DailyMenu::isSoldOut(today(), $menuItemId)) {
+            return false;
+        }
+
+        return true;
     }
 
     /*

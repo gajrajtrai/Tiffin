@@ -93,14 +93,21 @@ class OrderPlacementService
         }
 
         // Every item must be published today
-        $publishedIds = DailyMenu::query()
+        // Every item must be published today AND not sold out
+        $dailyMenus = DailyMenu::query()
             ->whereDate('service_date', $date)
-            ->pluck('menu_item_id')
-            ->all();
+            ->get()
+            ->keyBy('menu_item_id');
 
         foreach ($items as $item) {
-            if (! in_array($item->id, $publishedIds, true)) {
+            $daily = $dailyMenus->get($item->id);
+
+            if (! $daily) {
                 throw new RuntimeException('"'.$item->name.'" is not available today.');
+            }
+
+            if ($daily->sold_out_at !== null) {
+                throw new RuntimeException('"'.$item->name.'" is sold out for today.');
             }
         }
 

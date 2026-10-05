@@ -2,6 +2,7 @@
 
 namespace App\Modules\Admin\Http\Livewire;
 
+use App\Modules\Menu\Models\DailyMenu;
 use App\Modules\Order\Models\Order;
 use App\Modules\Order\Services\OrderService;
 use Illuminate\Contracts\View\View;
@@ -36,6 +37,32 @@ class KitchenBoard extends Component
     {
         $this->statusType = $type;
         $this->statusMessage = $message;
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Sold out toggle
+    |--------------------------------------------------------------------------
+    */
+
+    public function toggleSoldOut(int $menuItemId): void
+    {
+        if (! auth()->user()->can('menu.publish')) {
+            abort(403);
+        }
+
+        try {
+            $nowSoldOut = DailyMenu::toggleSoldOut(today(), $menuItemId);
+
+            $this->flash(
+                'success',
+                $nowSoldOut
+                    ? 'Item marked as sold out. New orders for it will be blocked.'
+                    : 'Item is available again.'
+            );
+        } catch (\Throwable $e) {
+            $this->flash('error', $e->getMessage());
+        }
     }
 
     /*
@@ -175,12 +202,6 @@ class KitchenBoard extends Component
         $this->closeReject();
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Bulk forward
-    |--------------------------------------------------------------------------
-    */
-
     public function forwardAll(): void
     {
         Gate::authorize('viewAny', Order::class);
@@ -280,14 +301,21 @@ class KitchenBoard extends Component
             'active'     => $orders->count(),
         ];
 
-        // Prep summary — items still in play (pending/preparing/ready)
+        // ─── Sold-out flags for today ─────────────────────────────
+        $soldOutIds = DailyMenu::query()
+            ->whereDate('service_date', today())
+            ->whereNotNull('sold_out_at')
+            ->pluck('menu_item_id')
+            ->all();
+
+        // ─── Prep summary — items still in play ───────────────────
         $prepRows = \App\Modules\Order\Models\OrderItem::query()
             ->selectRaw('
+                menu_item_id,
                 item_name,
                 item_type,
                 is_veg,
-                SUM(quantity) as total_qty,
-                SUM(CASE WHEN quantity > 0 THEN 1 ELSE 0 END) as line_count
+                SUM(quantity) as total_qty
             ')
             ->whereHas('order', function ($q) {
                 $q->forToday()
@@ -297,9 +325,12 @@ class KitchenBoard extends Component
                       Order::STATUS_PICKED_UP,
                   ]);
             })
-            ->groupBy('item_name', 'item_type', 'is_veg')
+            ->groupBy('menu_item_id', 'item_name', 'item_type', 'is_veg')
             ->orderByDesc('total_qty')
-            ->get();
+            ->get()
+            ->each(function ($row) use ($soldOutIds) {
+                $row->is_sold_out = in_array($row->menu_item_id, $soldOutIds, true);
+            });
 
         $prepMains = $prepRows->where('item_type', 'main')->values();
         $prepFastFood = $prepRows->where('item_type', 'fastfood')->values();
