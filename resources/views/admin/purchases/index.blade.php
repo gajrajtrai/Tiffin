@@ -71,8 +71,11 @@
         <x-admin.data-table :headers="['PO Number', 'Supplier', 'Order Date', 'Items', 'Total', 'Status', '']">
             @foreach ($orders as $po)
                 <tr class="hover:bg-slate-50">
-                    <td class="px-4 py-3 font-mono text-xs font-semibold text-slate-700">
-                        {{ $po->po_number }}
+                    <td class="px-4 py-3">
+                        <div class="rounded bg-brand-100 px-1.5 py-0.5 font-mono text-xs font-bold text-brand-700 inline-block">
+                            {{ $po->display_ref }}
+                        </div>
+                        <div class="mt-0.5 font-mono text-[10px] text-slate-400">{{ $po->po_number }}</div>
                     </td>
                     <td class="px-4 py-3 text-sm text-slate-800">
                         {{ $po->supplier?->name ?? '—' }}

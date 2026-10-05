@@ -58,8 +58,11 @@
         <x-admin.data-table :headers="['Receipt #', 'Supplier', 'PO', 'Received Date', 'Items', 'Total', 'Status', '']">
             @foreach ($receipts as $gr)
                 <tr class="hover:bg-slate-50">
-                    <td class="px-4 py-3 font-mono text-xs font-semibold text-slate-700">
-                        {{ $gr->receipt_number }}
+                    <td class="px-4 py-3">
+                        <div class="rounded bg-sky-100 px-1.5 py-0.5 font-mono text-xs font-bold text-sky-700 inline-block">
+                            {{ $gr->display_ref }}
+                        </div>
+                        <div class="mt-0.5 font-mono text-[10px] text-slate-400">{{ $gr->receipt_number }}</div>
                     </td>
                     <td class="px-4 py-3 text-sm text-slate-800">
                         {{ $gr->supplier?->name ?? '—' }}
@@ -67,8 +70,8 @@
                     <td class="px-4 py-3 text-xs">
                         @if ($gr->purchaseOrder)
                             <a href="{{ route('admin.purchases.show', $gr->purchaseOrder) }}"
-                               class="font-mono font-semibold text-brand-600 hover:text-brand-700">
-                                {{ $gr->purchaseOrder->po_number }}
+                               class="rounded bg-brand-100 px-1.5 py-0.5 font-mono text-xs font-bold text-brand-700 hover:bg-brand-200">
+                                {{ $gr->purchaseOrder->display_ref }}
                             </a>
                         @else
                             <span class="text-slate-400">Walk-in</span>

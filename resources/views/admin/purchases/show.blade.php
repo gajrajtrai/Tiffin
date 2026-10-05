@@ -30,7 +30,10 @@
         <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
                 <div class="flex flex-wrap items-center gap-2">
-                    <h1 class="font-mono text-xl font-bold text-slate-900">{{ $po->po_number }}</h1>
+                    <h1 class="rounded-lg bg-brand-100 px-3 py-1 font-mono text-xl font-bold text-brand-700">
+                        {{ $po->display_ref }}
+                    </h1>
+                    <span class="font-mono text-xs text-slate-400">{{ $po->po_number }}</span>
                     <x-admin.badge :variant="$po->statusVariant()">{{ $po->statusLabel() }}</x-admin.badge>
                 </div>
                 <div class="mt-2 text-sm text-slate-600">
@@ -165,8 +168,8 @@
                     <div class="flex items-center justify-between px-4 py-3">
                         <div>
                             <a href="{{ route('admin.receipts.show', $gr) }}"
-                               class="font-mono text-sm font-semibold text-brand-600 hover:text-brand-700">
-                                {{ $gr->receipt_number }}
+                               class="inline-flex items-center gap-2 rounded bg-sky-100 px-2 py-0.5 font-mono text-xs font-bold text-sky-700 hover:bg-sky-200">
+                                {{ $gr->display_ref }}
                             </a>
                             <div class="text-xs text-slate-500">
                                 {{ $gr->received_date->format('M j, Y') }} · {{ $gr->items->count() }} items

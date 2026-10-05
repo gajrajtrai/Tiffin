@@ -61,16 +61,18 @@ class Order extends Model
      */
     protected static function generateOrderNumber(Carbon|string $serviceDate): string
     {
-        // YYMMDD-NNN. Sequence resets daily.
+        // YYMMDD-NN. Sequence resets daily. Padding is a minimum — a day
+        // that exceeds 99 orders naturally extends to 3 digits without code
+        // change (e.g., 261005-100).
         $dateStr = Carbon::parse($serviceDate)->format('ymd');
         $base = $dateStr.'-';
 
         $attempt = 0;
         do {
             $count = static::whereDate('service_date', $serviceDate)->count();
-            $number = $base.str_pad((string) ($count + 1 + $attempt), 3, '0', STR_PAD_LEFT);
+            $number = $base.str_pad((string) ($count + 1 + $attempt), 2, '0', STR_PAD_LEFT);
             $attempt++;
-        } while (static::where('order_number', $number)->exists() && $attempt < 999);
+        } while (static::where('order_number', $number)->exists() && $attempt < 9999);
 
         return $number;
     }

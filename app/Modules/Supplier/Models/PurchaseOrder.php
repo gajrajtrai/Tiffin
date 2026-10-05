@@ -51,15 +51,17 @@ class PurchaseOrder extends Model
 
     protected static function generateNumber(Carbon|string $date): string
     {
-        $dateStr = Carbon::parse($date)->format('Ymd');
-        $base = 'PO-'.$dateStr.'-';
+        // PYYMMDD-NN. Sequence resets daily. Padding is a minimum — a day
+        // exceeding 99 POs naturally extends to 3 digits.
+        $dateStr = Carbon::parse($date)->format('ymd');
+        $base = 'P'.$dateStr.'-';
 
         $attempt = 0;
         do {
             $count = static::where('po_number', 'like', $base.'%')->count();
-            $number = $base.str_pad((string) ($count + 1 + $attempt), 4, '0', STR_PAD_LEFT);
+            $number = $base.str_pad((string) ($count + 1 + $attempt), 2, '0', STR_PAD_LEFT);
             $attempt++;
-        } while (static::where('po_number', $number)->exists() && $attempt < 100);
+        } while (static::where('po_number', $number)->exists() && $attempt < 9999);
 
         return $number;
     }
@@ -165,7 +167,28 @@ class PurchaseOrder extends Model
             default                         => 'slate',
         };
     }
+    /*
+    |--------------------------------------------------------------------------
+    | Display reference
+    |--------------------------------------------------------------------------
+    |
+    | Short, spoken-friendly identifier: PJ47 (October, 47th PO of the day).
+    |
+    */
 
+    public function getDisplayRefAttribute(): string
+    {
+        $parts = explode('-', (string) $this->po_number);
+
+        if (count($parts) !== 2 || ! is_numeric($parts[1])) {
+            return (string) $this->po_number;
+        }
+
+        $sequence = (int) $parts[1];
+        $monthLetter = chr(64 + (int) Carbon::parse($this->order_date)->format('n'));
+
+        return 'P'.$monthLetter.$sequence;
+    }
     public function recalculateStatus(): void
     {
         if ($this->status === self::STATUS_CANCELLED) {

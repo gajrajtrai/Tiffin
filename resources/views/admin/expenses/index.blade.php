@@ -135,7 +135,7 @@
                                     @if ($expense->isGrLinked())
                                         <a href="{{ route('admin.receipts.show', $expense->goodsReceipt) }}"
                                            class="inline-flex items-center gap-1 rounded bg-sky-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-sky-700 hover:bg-sky-200">
-                                            via {{ $expense->goodsReceipt->receipt_number }}
+                                           via {{ $expense->goodsReceipt->display_ref }}
                                         </a>
                                     @endif
                                     @if ($expense->hasMedia(\App\Modules\Expense\Models\Expense::MEDIA_RECEIPT))
