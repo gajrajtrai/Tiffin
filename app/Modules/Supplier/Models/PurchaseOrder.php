@@ -167,28 +167,7 @@ class PurchaseOrder extends Model
             default                         => 'slate',
         };
     }
-    /*
-    |--------------------------------------------------------------------------
-    | Display reference
-    |--------------------------------------------------------------------------
-    |
-    | Short, spoken-friendly identifier: PJ47 (October, 47th PO of the day).
-    |
-    */
 
-    public function getDisplayRefAttribute(): string
-    {
-        $parts = explode('-', (string) $this->po_number);
-
-        if (count($parts) !== 2 || ! is_numeric($parts[1])) {
-            return (string) $this->po_number;
-        }
-
-        $sequence = (int) $parts[1];
-        $monthLetter = chr(64 + (int) Carbon::parse($this->order_date)->format('n'));
-
-        return 'P'.$monthLetter.$sequence;
-    }
     public function recalculateStatus(): void
     {
         if ($this->status === self::STATUS_CANCELLED) {

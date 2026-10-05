@@ -34,10 +34,7 @@
         <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
                 <div class="flex flex-wrap items-center gap-2">
-                    <h1 class="rounded-lg bg-sky-100 px-3 py-1 font-mono text-xl font-bold text-sky-700">
-                        {{ $gr->display_ref }}
-                    </h1>
-                    <span class="font-mono text-xs text-slate-400">{{ $gr->receipt_number }}</span>
+                    <h1 class="font-mono text-xl font-bold text-slate-900">{{ $gr->receipt_number }}</h1>
                     <x-admin.badge :variant="$gr->statusVariant()">{{ $gr->statusLabel() }}</x-admin.badge>
                 </div>
                 <div class="mt-2 text-sm text-slate-600">
@@ -51,8 +48,8 @@
                     @if ($gr->purchaseOrder)
                         · from
                         <a href="{{ route('admin.purchases.show', $gr->purchaseOrder) }}"
-                           class="rounded bg-brand-100 px-1.5 py-0.5 font-mono text-xs font-bold text-brand-700 hover:bg-brand-200">
-                            {{ $gr->purchaseOrder->display_ref }}
+                           class="font-mono font-semibold text-brand-600 hover:text-brand-700">
+                            {{ $gr->purchaseOrder->po_number }}
                         </a>
                     @endif
                     @if ($gr->confirmed_at)

@@ -1,12 +1,13 @@
 <?php
 
+use App\Modules\Menu\Models\ServiceDay;
 use App\Modules\Order\Models\Order;
 
 beforeEach(function () {
     openToday();
 });
 
-test('order_number uses YYMMDD-NNN format', function () {
+test('order_number uses YYMMDD-NN format', function () {
     $customer = makeCustomer(['wallet_balance' => 500]);
     $item = makeMenuItem(['price' => 100]);
     publishToday($item);
@@ -14,69 +15,52 @@ test('order_number uses YYMMDD-NNN format', function () {
     $order = app(\App\Modules\Order\Services\OrderPlacementService::class)
         ->place($customer, [$item->id => 1], Order::METHOD_PICKUP);
 
-    expect($order->order_number)->toMatch('/^\d{6}-\d{3}$/');
-    expect(strlen($order->order_number))->toBe(10);
+    expect($order->order_number)->toMatch('/^\d{6}-\d{2}$/');
+    expect(strlen($order->order_number))->toBe(9);
 });
 
-test('display_ref combines month letter and unpadded sequence', function () {
-    $customer = makeCustomer(['wallet_balance' => 500]);
+test('sequence increments within the same day', function () {
     $item = makeMenuItem(['price' => 100]);
     publishToday($item);
 
-    $order = app(\App\Modules\Order\Services\OrderPlacementService::class)
-        ->place($customer, [$item->id => 1], Order::METHOD_PICKUP);
+    $c1 = makeCustomer(['wallet_balance' => 500]);
+    $c2 = makeCustomer(['wallet_balance' => 500]);
 
-    $monthLetter = chr(64 + (int) now()->format('n'));
+    $a = app(\App\Modules\Order\Services\OrderPlacementService::class)
+        ->place($c1, [$item->id => 1], Order::METHOD_PICKUP);
+    $b = app(\App\Modules\Order\Services\OrderPlacementService::class)
+        ->place($c2, [$item->id => 1], Order::METHOD_PICKUP);
 
-    expect($order->display_ref)->toBe($monthLetter.'1'); // First order today = J1
-});
-
-test('display_ref strips leading zeros from sequence', function () {
-    $customer = makeCustomer(['wallet_balance' => 500]);
-    $item = makeMenuItem(['price' => 100]);
-    publishToday($item);
-
-    // Create 12 orders (same customer can't; use separate customers)
-    for ($i = 0; $i < 11; $i++) {
-        $c = makeCustomer(['wallet_balance' => 500]);
-        app(\App\Modules\Order\Services\OrderPlacementService::class)
-            ->place($c, [$item->id => 1], Order::METHOD_PICKUP);
-    }
-
-    $c12 = makeCustomer(['wallet_balance' => 500]);
-    $order12 = app(\App\Modules\Order\Services\OrderPlacementService::class)
-        ->place($c12, [$item->id => 1], Order::METHOD_PICKUP);
-
-    expect($order12->order_number)->toBe(now()->format('ymd').'-012');
-    expect($order12->display_ref)->toBe(chr(64 + (int) now()->format('n')).'12');
+    expect(str_ends_with($a->order_number, '-01'))->toBeTrue();
+    expect(str_ends_with($b->order_number, '-02'))->toBeTrue();
 });
 
 test('sequence is per day, not global', function () {
-    // Today's first order
-    $c1 = makeCustomer(['wallet_balance' => 500]);
     $item = makeMenuItem(['price' => 100]);
     publishToday($item);
 
+    // Today's first order
+    $c1 = makeCustomer(['wallet_balance' => 500]);
     $todayOrder = app(\App\Modules\Order\Services\OrderPlacementService::class)
         ->place($c1, [$item->id => 1], Order::METHOD_PICKUP);
 
-    // Yesterday's first order — should also be sequence 1
+    // Yesterday's manual order — should also be sequence 01
     $yesterday = today()->subDay();
-    \App\Modules\Menu\Models\ServiceDay::updateOrCreate(
+
+    ServiceDay::updateOrCreate(
         ['service_date' => $yesterday->toDateString()],
         ['is_open' => true, 'delivery_cutoff_time' => '23:59']
     );
 
-    // Create order manually with yesterday's date
     $yOrder = Order::create([
-        'user_id' => $c1->id,
-        'service_date' => $yesterday,
+        'user_id'         => $c1->id,
+        'service_date'    => $yesterday,
         'delivery_method' => Order::METHOD_PICKUP,
-        'total' => 100,
-        'status' => Order::STATUS_DELIVERED,
-        'payment_status' => 'paid',
+        'total'           => 100,
+        'status'          => Order::STATUS_DELIVERED,
+        'payment_status'  => 'paid',
     ]);
 
-    expect($yOrder->order_number)->toBe($yesterday->format('ymd').'-001');
-    expect($todayOrder->order_number)->toBe(today()->format('ymd').'-001');
+    expect($yOrder->order_number)->toBe($yesterday->format('ymd').'-01');
+    expect($todayOrder->order_number)->toBe(today()->format('ymd').'-01');
 });

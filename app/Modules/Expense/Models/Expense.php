@@ -58,15 +58,17 @@ class Expense extends Model implements HasMedia
 
     protected static function generateNumber(Carbon|string $date): string
     {
-        $dateStr = Carbon::parse($date)->format('Ymd');
-        $base = 'EXP-'.$dateStr.'-';
+        // EYYMMDD-NN. Sequence resets daily. Padding is a minimum — a day
+        // exceeding 99 expenses naturally extends to 3 digits.
+        $dateStr = Carbon::parse($date)->format('ymd');
+        $base = 'E'.$dateStr.'-';
 
         $attempt = 0;
         do {
             $count = static::where('expense_number', 'like', $base.'%')->count();
-            $number = $base.str_pad((string) ($count + 1 + $attempt), 4, '0', STR_PAD_LEFT);
+            $number = $base.str_pad((string) ($count + 1 + $attempt), 2, '0', STR_PAD_LEFT);
             $attempt++;
-        } while (static::where('expense_number', $number)->exists() && $attempt < 100);
+        } while (static::where('expense_number', $number)->exists() && $attempt < 9999);
 
         return $number;
     }

@@ -158,28 +158,6 @@ class GoodsReceipt extends Model
             default         => ucfirst((string) $this->payment_method),
         };
     }
-    /*
-    |--------------------------------------------------------------------------
-    | Display reference
-    |--------------------------------------------------------------------------
-    |
-    | Short, spoken-friendly identifier: GJ47 (October, 47th GR of the day).
-    |
-    */
-
-    public function getDisplayRefAttribute(): string
-    {
-        $parts = explode('-', (string) $this->receipt_number);
-
-        if (count($parts) !== 2 || ! is_numeric($parts[1])) {
-            return (string) $this->receipt_number;
-        }
-
-        $sequence = (int) $parts[1];
-        $monthLetter = chr(64 + (int) Carbon::parse($this->received_date)->format('n'));
-
-        return 'G'.$monthLetter.$sequence;
-    }
     /**
      * Recompute header totals from the current line items.
      * Called automatically when confirming; call manually after editing items.

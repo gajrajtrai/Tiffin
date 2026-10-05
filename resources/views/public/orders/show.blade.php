@@ -44,8 +44,7 @@
     {{-- Header card --}}
     <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <div class="flex flex-wrap items-center gap-2">
-            <span class="rounded-md bg-brand-100 px-2 py-0.5 font-mono text-sm font-bold text-brand-700">{{ $order->display_ref }}</span>
-            <span class="font-mono text-xs text-slate-400">{{ $order->order_number }}</span>
+            <span class="font-mono text-sm font-semibold text-slate-500">{{ $order->order_number }}</span>
             <x-admin.badge :variant="$order->statusVariant()">{{ $order->statusLabel() }}</x-admin.badge>
             @if ($order->isDelivery())
                 <x-admin.badge variant="info">Delivery</x-admin.badge>

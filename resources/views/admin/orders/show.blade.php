@@ -22,10 +22,7 @@
         <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
                 <div class="flex flex-wrap items-center gap-2">
-                    <h1 class="rounded-lg bg-brand-100 px-3 py-1 font-mono text-xl font-bold text-brand-700">
-                        {{ $order->display_ref }}
-                    </h1>
-                    <span class="font-mono text-xs text-slate-400">{{ $order->order_number }}</span>
+                    <h1 class="font-mono text-xl font-bold text-slate-900">{{ $order->order_number }}</h1>
                     <x-admin.badge :variant="$order->statusVariant()">
                         {{ $order->statusLabel() }}
                     </x-admin.badge>

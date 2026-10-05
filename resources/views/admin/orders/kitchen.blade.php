@@ -299,8 +299,8 @@
 
                                 {{-- Header --}}
                                 <div class="flex items-center justify-between border-b border-slate-100 px-3 py-2">
-                                    <div class="rounded bg-brand-100 px-2 py-0.5 font-mono text-xs font-bold text-brand-700">
-                                        {{ $order->display_ref }}
+                                    <div class="font-mono text-xs font-semibold text-slate-600">
+                                        {{ $order->order_number }}
                                     </div>
                                     @if ($order->isDelivery())
                                         <span class="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-sky-800">

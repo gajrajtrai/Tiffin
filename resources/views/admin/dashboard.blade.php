@@ -131,10 +131,7 @@
                 @foreach ($orders as $order)
                     <tr class="hover:bg-slate-50">
                         <td class="px-4 py-3">
-                            <div class="flex items-center gap-1.5">
-                                <span class="rounded bg-brand-100 px-1.5 py-0.5 font-mono text-[10px] font-bold text-brand-700">{{ $order->display_ref }}</span>
-                                <span class="font-mono text-[10px] text-slate-400">{{ $order->order_number }}</span>
-                            </div>
+                            <div class="font-mono text-xs text-slate-500">{{ $order->order_number }}</div>
                             <div class="text-xs text-slate-400">{{ $order->created_at->format('H:i') }}</div>
                         </td>
                         <td class="px-4 py-3">

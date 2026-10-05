@@ -246,31 +246,4 @@ class Order extends Model
 
         return max(0, $this->editable_until->getTimestamp() - now()->getTimestamp());
     }
-	    /*
-    |--------------------------------------------------------------------------
-    | Display reference
-    |--------------------------------------------------------------------------
-    |
-    | Short, spoken-friendly identifier: month letter + sequence without leading
-    | zeros. Example: J47 (October, 47th order of the day).
-    |
-    | Falls back gracefully if the order_number doesn't parse (e.g., legacy data).
-    |
-    */
-
-    public function getDisplayRefAttribute(): string
-    {
-        $parts = explode('-', (string) $this->order_number);
-
-        if (count($parts) !== 2 || ! is_numeric($parts[1])) {
-            return (string) $this->order_number;
-        }
-
-        $sequence = (int) $parts[1];
-
-        // A = January, B = February, ... L = December
-        $monthLetter = chr(64 + (int) $this->service_date->format('n'));
-
-        return $monthLetter.$sequence;
-    }
 }

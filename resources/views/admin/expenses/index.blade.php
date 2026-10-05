@@ -134,8 +134,8 @@
                                 <div class="mt-0.5 flex flex-wrap items-center gap-1">
                                     @if ($expense->isGrLinked())
                                         <a href="{{ route('admin.receipts.show', $expense->goodsReceipt) }}"
-                                           class="inline-flex items-center gap-1 rounded bg-sky-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-sky-700 hover:bg-sky-200">
-                                           via {{ $expense->goodsReceipt->display_ref }}
+                                           class="inline-flex items-center gap-1 text-[10px] font-medium text-sky-700 hover:text-sky-800">
+                                            via {{ $expense->goodsReceipt->receipt_number }}
                                         </a>
                                     @endif
                                     @if ($expense->hasMedia(\App\Modules\Expense\Models\Expense::MEDIA_RECEIPT))
