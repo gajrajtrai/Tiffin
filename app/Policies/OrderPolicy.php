@@ -110,4 +110,23 @@ class OrderPolicy
 
         return $user->can('order.cancel');
     }
+	
+	    /*
+    |--------------------------------------------------------------------------
+    | Edit (customer self-service within the window)
+    |--------------------------------------------------------------------------
+    |
+    | Only the owning customer can edit. Staff cannot edit a customer's
+    | order mid-flight — they cancel or advance it instead.
+    |
+    */
+
+    public function edit(User $user, Order $order): bool
+    {
+        if ($user->id !== $order->user_id) {
+            return false;
+        }
+
+        return $order->isEditable();
+    }
 }

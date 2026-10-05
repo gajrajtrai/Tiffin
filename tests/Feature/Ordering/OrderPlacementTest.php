@@ -25,7 +25,7 @@ test('a customer with sufficient balance can place an order', function () {
     expect($order->status)->toBe(Order::STATUS_PENDING);
     expect($order->user_id)->toBe($customer->id);
     expect((float) $order->total)->toBe(120.0);
-    expect($order->order_number)->toStartWith('TTF-');
+    expect($order->order_number)->toMatch('/^\d{6}-\d{3}$/');
 });
 
 test('order total is sum of price times quantity', function () {

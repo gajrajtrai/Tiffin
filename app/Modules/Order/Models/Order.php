@@ -34,6 +34,7 @@ class Order extends Model
         'total', 'status', 'payment_status',
         'wallet_transaction_id', 'notes',
         'cancelled_at', 'cancelled_reason',
+		'editable_until',
     ];
 
     protected function casts(): array
@@ -42,6 +43,7 @@ class Order extends Model
             'service_date'   => 'date',
             'total'          => 'decimal:2',
             'cancelled_at'   => 'datetime',
+            'editable_until' => 'datetime',
         ];
     }
 
@@ -59,15 +61,16 @@ class Order extends Model
      */
     protected static function generateOrderNumber(Carbon|string $serviceDate): string
     {
-        $date = Carbon::parse($serviceDate)->format('Ymd');
-        $base = 'TTF-'.$date.'-';
+        // YYMMDD-NNN. Sequence resets daily.
+        $dateStr = Carbon::parse($serviceDate)->format('ymd');
+        $base = $dateStr.'-';
 
         $attempt = 0;
         do {
             $count = static::whereDate('service_date', $serviceDate)->count();
-            $number = $base.str_pad((string) ($count + 1 + $attempt), 4, '0', STR_PAD_LEFT);
+            $number = $base.str_pad((string) ($count + 1 + $attempt), 3, '0', STR_PAD_LEFT);
             $attempt++;
-        } while (static::where('order_number', $number)->exists() && $attempt < 100);
+        } while (static::where('order_number', $number)->exists() && $attempt < 999);
 
         return $number;
     }
@@ -203,5 +206,69 @@ class Order extends Model
             self::STATUS_CANCELLED => 'danger',
             default                => 'slate',
         };
+    }
+	    /*
+    |--------------------------------------------------------------------------
+    | Edit window helpers
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Can the customer still edit this order?
+     *
+     * Requirements:
+     *   - Status must be pending (not yet forwarded to kitchen)
+     *   - The edit window must not have expired
+     */
+    public function isEditable(): bool
+    {
+        if ($this->status !== self::STATUS_PENDING) {
+            return false;
+        }
+
+        if (! $this->editable_until) {
+            return false;
+        }
+
+        return $this->editable_until->isFuture();
+    }
+
+    /**
+     * Seconds remaining in the edit window. Zero if not editable.
+     */
+    public function editSecondsRemaining(): int
+    {
+        if (! $this->isEditable()) {
+            return 0;
+        }
+
+        return max(0, $this->editable_until->getTimestamp() - now()->getTimestamp());
+    }
+	    /*
+    |--------------------------------------------------------------------------
+    | Display reference
+    |--------------------------------------------------------------------------
+    |
+    | Short, spoken-friendly identifier: month letter + sequence without leading
+    | zeros. Example: J47 (October, 47th order of the day).
+    |
+    | Falls back gracefully if the order_number doesn't parse (e.g., legacy data).
+    |
+    */
+
+    public function getDisplayRefAttribute(): string
+    {
+        $parts = explode('-', (string) $this->order_number);
+
+        if (count($parts) !== 2 || ! is_numeric($parts[1])) {
+            return (string) $this->order_number;
+        }
+
+        $sequence = (int) $parts[1];
+
+        // A = January, B = February, ... L = December
+        $monthLetter = chr(64 + (int) $this->service_date->format('n'));
+
+        return $monthLetter.$sequence;
     }
 }

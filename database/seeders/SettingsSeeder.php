@@ -18,6 +18,7 @@ class SettingsSeeder extends Seeder
 
             // ─── Ordering ──────────────────────────────────────────────
             ['order_cutoff_time',        '11:00',           'string',  'order', 'Delivery Order Cut-off Time'],
+			['order_edit_window_minutes', 15,               'integer', 'order', 'Edit Window After Order (minutes)'],
             ['delivery_slot_label',      '11:00 AM – 2:00 PM', 'string', 'order', 'Delivery Slot Label'],
             ['delivery_capacity',        100,               'integer', 'order', 'Max Delivery Orders per Day'],
             ['max_mains_per_day',        2,                 'integer', 'order', 'Max Main Courses per Day'],

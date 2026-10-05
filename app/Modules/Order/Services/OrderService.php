@@ -1,7 +1,10 @@
 <?php
 
 namespace App\Modules\Order\Services;
-
+use App\Modules\Menu\Models\DailyMenu;
+use App\Modules\Menu\Models\MenuItem;
+use App\Modules\Menu\Models\ServiceDay;
+use App\Modules\Order\Models\OrderItem;
 use App\Models\User;
 use App\Modules\Order\Models\Order;
 use App\Modules\Payment\Services\WalletService;
@@ -96,6 +99,179 @@ class OrderService
             $locked->save();
 
             return $locked->fresh(['items', 'user']);
+        });
+    }
+	
+	    /*
+    |--------------------------------------------------------------------------
+    | Customer self-service edit (within the 15-minute window)
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Add a menu item to an editable order. If the item is already in the
+     * order, increments its quantity instead of creating a new line.
+     */
+    public function addItem(Order $order, int $menuItemId, User $performedBy): Order
+    {
+        return DB::transaction(function () use ($order, $menuItemId, $performedBy) {
+            $locked = Order::query()->lockForUpdate()->findOrFail($order->id);
+
+            if (! $locked->isEditable()) {
+                throw new RuntimeException('This order can no longer be edited.');
+            }
+
+            $menuItem = MenuItem::query()
+                ->where('id', $menuItemId)
+                ->where('is_active', true)
+                ->first();
+
+            if (! $menuItem) {
+                throw new RuntimeException('That item is no longer available.');
+            }
+
+            if (! DailyMenu::isPublished(today(), $menuItemId)) {
+                throw new RuntimeException('"'.$menuItem->name.'" is not available today.');
+            }
+
+            if (DailyMenu::isSoldOut(today(), $menuItemId)) {
+                throw new RuntimeException('"'.$menuItem->name.'" is sold out for today.');
+            }
+
+            $customer = User::query()->lockForUpdate()->findOrFail($locked->user_id);
+            $itemPrice = (float) $menuItem->price;
+
+            if ((float) $customer->wallet_balance < $itemPrice) {
+                throw new RuntimeException(sprintf(
+                    'Insufficient wallet balance. You have Nu. %s but this item costs Nu. %s.',
+                    number_format((float) $customer->wallet_balance, 2),
+                    number_format($itemPrice, 2),
+                ));
+            }
+
+            $existing = OrderItem::query()
+                ->where('order_id', $locked->id)
+                ->where('menu_item_id', $menuItemId)
+                ->first();
+
+            if ($existing) {
+                $existing->quantity = (int) $existing->quantity + 1;
+                $existing->save();
+            } else {
+                OrderItem::create([
+                    'order_id'     => $locked->id,
+                    'menu_item_id' => $menuItem->id,
+                    'item_name'    => $menuItem->name,
+                    'item_price'   => $menuItem->price,
+                    'is_veg'       => $menuItem->is_veg,
+                    'item_type'    => $menuItem->type,
+                    'quantity'     => 1,
+                ]);
+            }
+
+            $this->wallet->debit(
+                user: $customer,
+                amount: $itemPrice,
+                description: 'Order '.$locked->order_number.' — added '.$menuItem->name,
+                reference: $locked,
+                performedBy: $performedBy,
+            );
+
+            $locked->total = $locked->items()->get()->sum(
+                fn ($i) => (float) $i->item_price * (int) $i->quantity
+            );
+            $locked->save();
+
+            return $locked->fresh(['items']);
+        });
+    }
+
+    /**
+     * Remove a line item from an editable order. Refunds the line total.
+     * Blocked if it would leave the order empty — use cancel() instead.
+     */
+    public function removeItem(Order $order, int $orderItemId, User $performedBy): Order
+    {
+        return DB::transaction(function () use ($order, $orderItemId, $performedBy) {
+            $locked = Order::query()->lockForUpdate()->findOrFail($order->id);
+
+            if (! $locked->isEditable()) {
+                throw new RuntimeException('This order can no longer be edited.');
+            }
+
+            $orderItem = OrderItem::query()
+                ->where('order_id', $locked->id)
+                ->where('id', $orderItemId)
+                ->first();
+
+            if (! $orderItem) {
+                throw new RuntimeException('Item not found in this order.');
+            }
+
+            $remaining = OrderItem::where('order_id', $locked->id)->count();
+
+            if ($remaining <= 1) {
+                throw new RuntimeException('Your order must contain at least one item. Cancel the order instead.');
+            }
+
+            $refundAmount = (float) $orderItem->item_price * (int) $orderItem->quantity;
+            $removedName = $orderItem->item_name;
+
+            $customer = User::query()->lockForUpdate()->findOrFail($locked->user_id);
+
+            $this->wallet->refund(
+                user: $customer,
+                amount: $refundAmount,
+                description: 'Order '.$locked->order_number.' — removed '.$removedName,
+                reference: $locked,
+                performedBy: $performedBy,
+            );
+
+            $orderItem->delete();
+
+            $locked->total = $locked->items()->get()->sum(
+                fn ($i) => (float) $i->item_price * (int) $i->quantity
+            );
+            $locked->save();
+
+            return $locked->fresh(['items']);
+        });
+    }
+
+    /**
+     * Change the delivery method on an editable order.
+     * Switching TO delivery requires the cutoff not to have passed.
+     */
+    public function changeDeliveryMethod(Order $order, string $method, User $performedBy): Order
+    {
+        if (! in_array($method, [Order::METHOD_DELIVERY, Order::METHOD_PICKUP], true)) {
+            throw new RuntimeException('Invalid delivery method.');
+        }
+
+        return DB::transaction(function () use ($order, $method) {
+            $locked = Order::query()->lockForUpdate()->findOrFail($order->id);
+
+            if (! $locked->isEditable()) {
+                throw new RuntimeException('This order can no longer be edited.');
+            }
+
+            if ($method === Order::METHOD_DELIVERY) {
+                $serviceDay = ServiceDay::forDate($locked->service_date);
+
+                if ($serviceDay->isPastCutoff()) {
+                    throw new RuntimeException(
+                        'Delivery cut-off was at '.$serviceDay->effectiveCutoffTime().'. Please choose pickup.'
+                    );
+                }
+            }
+
+            $locked->delivery_method = $method;
+            $locked->delivery_slot = $method === Order::METHOD_DELIVERY
+                ? ($locked->delivery_slot ?: '11:00 AM – 2:00 PM')
+                : null;
+            $locked->save();
+
+            return $locked->fresh(['items']);
         });
     }
 }

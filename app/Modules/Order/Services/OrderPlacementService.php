@@ -129,6 +129,8 @@ class OrderPlacementService
         }
 
         return DB::transaction(function () use ($customer, $cart, $items, $total, $deliveryMethod, $deliverySlot, $serviceDay, $notes) {
+            $editWindowMinutes = (int) \App\Modules\Core\Models\Setting::get('order_edit_window_minutes', 15);
+
             $order = Order::create([
                 'user_id'         => $customer->id,
                 'service_date'    => today(),
@@ -140,6 +142,7 @@ class OrderPlacementService
                 'status'          => Order::STATUS_PENDING,
                 'payment_status'  => 'paid',
                 'notes'           => $notes,
+                'editable_until'  => now()->addMinutes($editWindowMinutes),
             ]);
 
             foreach ($cart as $menuItemId => $qty) {
