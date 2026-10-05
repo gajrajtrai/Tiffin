@@ -9,6 +9,7 @@ use App\Modules\Menu\Models\ServiceDay;
 use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderItem;
 use App\Modules\Payment\Services\WalletService;
+use App\Modules\Payment\Models\WalletTransaction;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -197,6 +198,188 @@ class OrderPlacementService
             $order->save();
 
             return $order->fresh(['items']);
+        });
+    }
+	    /**
+     * Admin-entered order — for phone calls, walk-in counter orders, or any
+     * "out of the box" capture the customer didn't place through the app.
+     *
+     * Differences from place():
+     *   - No "one order per day" check (admin override)
+     *   - Payment method can be 'cash' (external) or 'wallet'
+     *   - When no customer is provided, defaults to the Walk-in system user
+     *
+     * @param  array<int, int>  $cart  menuItemId => quantity
+     */
+    public function placeManual(
+        ?User $customer,
+        array $cart,
+        string $deliveryMethod,
+        string $paymentMethod,
+        User $enteredBy,
+        ?string $notes = null,
+    ): Order {
+        // Drop zero/negative quantities, cast to int
+        $cart = array_filter(
+            array_map('intval', $cart),
+            fn ($qty) => $qty > 0
+        );
+
+        if (empty($cart)) {
+            throw new RuntimeException('Please select at least one item.');
+        }
+
+        if (! in_array($deliveryMethod, [Order::METHOD_DELIVERY, Order::METHOD_PICKUP], true)) {
+            throw new RuntimeException('Invalid delivery method.');
+        }
+
+        if (! in_array($paymentMethod, ['cash', 'wallet'], true)) {
+            throw new RuntimeException('Invalid payment method.');
+        }
+
+        if ($paymentMethod === 'wallet' && ! $customer) {
+            throw new RuntimeException('Wallet payment requires a named customer.');
+        }
+
+        // Default to the walk-in system user when no customer is given
+        if (! $customer) {
+            $customer = User::where('mobile', '00000000')->first();
+
+            if (! $customer) {
+                throw new RuntimeException('Walk-in system user not seeded. Run WalkInUserSeeder.');
+            }
+        }
+
+        $date = today();
+        $serviceDay = ServiceDay::forDate($date);
+
+        if (! $serviceDay->is_open) {
+            throw new RuntimeException('Service is closed today.');
+        }
+
+        if ($deliveryMethod === Order::METHOD_DELIVERY && $serviceDay->isPastCutoff()) {
+            throw new RuntimeException(
+                'Delivery cut-off was at '.$serviceDay->effectiveCutoffTime().'.'
+            );
+        }
+
+        // Load items
+        $items = MenuItem::query()
+            ->whereIn('id', array_keys($cart))
+            ->where('is_active', true)
+            ->get()
+            ->keyBy('id');
+
+        if ($items->count() !== count($cart)) {
+            throw new RuntimeException('One or more items are no longer available.');
+        }
+
+        // Published + not sold out + within daily limit
+        $dailyMenus = DailyMenu::query()
+            ->whereDate('service_date', $date)
+            ->get()
+            ->keyBy('menu_item_id');
+
+        foreach ($items as $item) {
+            $daily = $dailyMenus->get($item->id);
+
+            if (! $daily) {
+                throw new RuntimeException('"'.$item->name.'" is not available today.');
+            }
+
+            if ($daily->sold_out_at !== null) {
+                throw new RuntimeException('"'.$item->name.'" is sold out for today.');
+            }
+
+            if ($item->daily_limit !== null) {
+                $orderedToday = (int) OrderItem::query()
+                    ->where('menu_item_id', $item->id)
+                    ->whereHas('order', function ($q) use ($date) {
+                        $q->whereDate('service_date', $date)
+                          ->where('status', '!=', Order::STATUS_CANCELLED);
+                    })
+                    ->sum('quantity');
+
+                $requested = $cart[$item->id];
+
+                if ($orderedToday + $requested > $item->daily_limit) {
+                    $remaining = max(0, $item->daily_limit - $orderedToday);
+
+                    throw new RuntimeException(
+                        $remaining > 0
+                            ? '"'.$item->name.'" — only '.$remaining.' remaining today.'
+                            : '"'.$item->name.'" has reached today\'s limit.'
+                    );
+                }
+            }
+        }
+
+        // Compute total
+        $total = 0.0;
+        foreach ($cart as $menuItemId => $qty) {
+            $item = $items[$menuItemId];
+            $total += (float) $item->price * $qty;
+        }
+
+        // Wallet balance check when paying from wallet
+        if ($paymentMethod === 'wallet') {
+            $customer->refresh();
+
+            if ((float) $customer->wallet_balance < $total) {
+                throw new RuntimeException(sprintf(
+                    'Insufficient wallet balance. Available: Nu. %s, Required: Nu. %s.',
+                    number_format((float) $customer->wallet_balance, 2),
+                    number_format($total, 2),
+                ));
+            }
+        }
+
+        return DB::transaction(function () use ($customer, $cart, $items, $total, $deliveryMethod, $serviceDay, $notes, $enteredBy, $paymentMethod) {
+            $order = Order::create([
+                'user_id'         => $customer->id,
+                'service_date'    => today(),
+                'delivery_method' => $deliveryMethod,
+                'delivery_slot'   => $deliveryMethod === Order::METHOD_DELIVERY
+                    ? $serviceDay->effectiveCutoffTime().' – 14:00'
+                    : null,
+                'total'           => $total,
+                'status'          => Order::STATUS_PENDING,
+                'payment_status'  => $paymentMethod === 'wallet' ? 'paid' : 'pending',
+                'notes'           => $notes,
+                'is_manual'       => true,
+                'entered_by'      => $enteredBy->id,
+                'editable_until'  => null, // manual orders can't be customer-edited
+            ]);
+
+            foreach ($cart as $menuItemId => $qty) {
+                $item = $items[$menuItemId];
+
+                OrderItem::create([
+                    'order_id'     => $order->id,
+                    'menu_item_id' => $item->id,
+                    'item_name'    => $item->name,
+                    'item_price'   => $item->price,
+                    'is_veg'       => $item->is_veg,
+                    'item_type'    => $item->type,
+                    'quantity'     => $qty,
+                ]);
+            }
+
+            // Debit the wallet if this is a wallet payment
+            if ($paymentMethod === 'wallet') {
+                $txn = $this->wallet->debit(
+                    user:        $customer,
+                    amount:      $total,
+                    description: 'Manual order '.$order->order_number,
+                    reference:   $order,
+                    performedBy: $enteredBy,
+                );
+
+                $order->wallet_transaction_id = $txn->id;
+                $order->save();
+            }
+
+            return $order->fresh(['items', 'user']);
         });
     }
 }

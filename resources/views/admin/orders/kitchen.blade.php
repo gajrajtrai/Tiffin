@@ -310,8 +310,15 @@
 
                                 {{-- Header --}}
                                 <div class="flex items-center justify-between border-b border-slate-100 px-3 py-2">
-                                    <div class="font-mono text-xs font-semibold text-slate-600">
-                                        {{ $order->order_number }}
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="font-mono text-xs font-semibold text-slate-600">
+                                            {{ $order->order_number }}
+                                        </span>
+                                        @if ($order->isManual())
+                                            <span class="rounded bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-800">
+                                                Manual
+                                            </span>
+                                        @endif
                                     </div>
                                     @if ($order->isDelivery())
                                         <span class="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-sky-800">

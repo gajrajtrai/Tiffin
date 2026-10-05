@@ -78,6 +78,8 @@ Route::middleware(['web', 'auth', 'staff'])
             ->middleware('can:order.view')->name('orders.index');
         Route::get('/orders/kitchen', KitchenBoard::class)
             ->middleware('can:order.view')->name('orders.kitchen');
+        Route::get('/orders/manual', \App\Modules\Admin\Http\Livewire\ManualOrderForm::class)
+            ->middleware('can:order.update-status')->name('orders.manual');
         Route::get('/orders/{order}', OrderDetail::class)
             ->middleware('can:order.view')->name('orders.show');
 

@@ -35,6 +35,7 @@ class Order extends Model
         'wallet_transaction_id', 'notes',
         'cancelled_at', 'cancelled_reason',
 		'editable_until',
+		'is_manual', 'entered_by',
     ];
 
     protected function casts(): array
@@ -44,6 +45,7 @@ class Order extends Model
             'total'          => 'decimal:2',
             'cancelled_at'   => 'datetime',
             'editable_until' => 'datetime',
+			'is_manual'      => 'boolean',
         ];
     }
 
@@ -245,5 +247,13 @@ class Order extends Model
         }
 
         return max(0, $this->editable_until->getTimestamp() - now()->getTimestamp());
+    }
+	    public function enteredBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'entered_by');
+    }
+	    public function isManual(): bool
+    {
+        return (bool) $this->is_manual;
     }
 }

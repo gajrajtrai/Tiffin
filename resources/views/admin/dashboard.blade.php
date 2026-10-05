@@ -32,7 +32,26 @@
     {{-- ─── Alerts row ─────────────────────────────────────── --}}
     {{-- ─── Quick actions + alerts row ─────────────────────── --}}
     <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-
+        @can('order.update-status')
+            <a href="{{ route('admin.orders.manual') }}"
+               class="group rounded-xl border-2 border-sky-200 bg-gradient-to-br from-sky-50 to-sky-100 p-4 shadow-sm transition hover:border-sky-400 hover:shadow-md">
+                <div class="flex items-center gap-3">
+                    <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-sky-500 text-white shadow-sm">
+                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                        </svg>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <div class="text-sm font-bold text-sky-900">New Manual Order</div>
+                        <div class="text-[11px] text-sky-700">Phone / walk-in capture</div>
+                    </div>
+                    <svg class="h-5 w-5 shrink-0 text-sky-400 transition group-hover:translate-x-0.5 group-hover:text-sky-600"
+                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                    </svg>
+                </div>
+            </a>
+        @endcan
         {{-- Kitchen Board — always visible --}}
         <a href="{{ route('admin.orders.kitchen') }}"
            class="group rounded-xl border-2 border-brand-200 bg-gradient-to-br from-brand-50 to-brand-100 p-4 shadow-sm transition hover:border-brand-400 hover:shadow-md">
