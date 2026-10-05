@@ -127,9 +127,15 @@
                                             </span>
                                         @endif
 
-                                        <span class="inline-flex min-w-[2.5rem] justify-center rounded-md bg-brand-500 px-2 py-0.5 text-sm font-bold text-white">
+                                        <span class="inline-flex min-w-[2.5rem] justify-center rounded-md bg-brand-500 px-2 py-0.5 text-sm font-bold text-white"
+                                              @if ($row->daily_limit) title="{{ $row->ordered_total_today }} of {{ $row->daily_limit }} sold today" @endif>
                                             {{ (int) $row->total_qty }}
                                         </span>
+                                        @if ($row->daily_limit)
+                                            <span class="text-[10px] text-slate-400">
+                                                {{ $row->ordered_total_today }}/{{ $row->daily_limit }}
+                                            </span>
+                                        @endif
 
                                         @can('menu.publish')
                                             @if ($row->is_sold_out)
@@ -188,10 +194,15 @@
                                             </span>
                                         @endif
 
-                                        <span class="inline-flex min-w-[2.5rem] justify-center rounded-md bg-sky-500 px-2 py-0.5 text-sm font-bold text-white">
+                                        <span class="inline-flex min-w-[2.5rem] justify-center rounded-md bg-brand-500 px-2 py-0.5 text-sm font-bold text-white"
+                                              @if ($row->daily_limit) title="{{ $row->ordered_total_today }} of {{ $row->daily_limit }} sold today" @endif>
                                             {{ (int) $row->total_qty }}
                                         </span>
-
+                                        @if ($row->daily_limit)
+                                            <span class="text-[10px] text-slate-400">
+                                                {{ $row->ordered_total_today }}/{{ $row->daily_limit }}
+                                            </span>
+                                        @endif
                                         @can('menu.publish')
                                             @if ($row->is_sold_out)
                                                 <button type="button"

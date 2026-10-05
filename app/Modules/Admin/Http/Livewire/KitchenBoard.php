@@ -327,10 +327,27 @@ class KitchenBoard extends Component
             })
             ->groupBy('menu_item_id', 'item_name', 'item_type', 'is_veg')
             ->orderByDesc('total_qty')
-            ->get()
-            ->each(function ($row) use ($soldOutIds) {
-                $row->is_sold_out = in_array($row->menu_item_id, $soldOutIds, true);
-            });
+            ->get();
+
+        // Annotate with sold-out status and daily limit
+        $limits = \App\Modules\Menu\Models\MenuItem::whereIn('id', $prepRows->pluck('menu_item_id'))
+            ->pluck('daily_limit', 'id');
+
+        $orderedTotalForLimit = \App\Modules\Order\Models\OrderItem::query()
+            ->selectRaw('menu_item_id, SUM(quantity) as total_qty')
+            ->whereIn('menu_item_id', $prepRows->pluck('menu_item_id'))
+            ->whereHas('order', function ($q) {
+                $q->forToday()
+                  ->where('status', '!=', Order::STATUS_CANCELLED);
+            })
+            ->groupBy('menu_item_id')
+            ->pluck('total_qty', 'menu_item_id');
+
+        $prepRows->each(function ($row) use ($soldOutIds, $limits, $orderedTotalForLimit) {
+            $row->is_sold_out = in_array($row->menu_item_id, $soldOutIds, true);
+            $row->daily_limit = $limits[$row->menu_item_id] ?? null;
+            $row->ordered_total_today = (int) ($orderedTotalForLimit[$row->menu_item_id] ?? 0);
+        });
 
         $prepMains = $prepRows->where('item_type', 'main')->values();
         $prepFastFood = $prepRows->where('item_type', 'fastfood')->values();

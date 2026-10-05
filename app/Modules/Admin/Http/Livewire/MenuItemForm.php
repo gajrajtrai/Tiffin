@@ -21,6 +21,7 @@ class MenuItemForm extends Component
     public string $type = 'fastfood';
     public bool $is_veg = true;
     public string $price = '';
+    public ?string $daily_limit = '';
     public int $sort_order = 0;
     public bool $is_active = true;
 
@@ -39,6 +40,7 @@ class MenuItemForm extends Component
             $this->type = $item->type;
             $this->is_veg = (bool) $item->is_veg;
             $this->price = (string) $item->price;
+            $this->daily_limit = $item->daily_limit !== null ? (string) $item->daily_limit : '';
             $this->sort_order = (int) $item->sort_order;
             $this->is_active = (bool) $item->is_active;
         } else {
@@ -62,17 +64,19 @@ class MenuItemForm extends Component
             'type'        => 'required|in:main,fastfood',
             'is_veg'      => 'boolean',
             'price'       => 'required|numeric|min:0|max:99999',
+            'daily_limit' => 'nullable|integer|min:1|max:9999',
             'sort_order'  => 'required|integer|min:0|max:9999',
             'is_active'   => 'boolean',
-            'image'       => 'nullable|image|max:5120', // 5 MB
+            'image'       => 'nullable|image|max:5120',
         ];
     }
 
     protected function messages(): array
     {
         return [
-            'image.image' => 'File must be a valid image (JPEG, PNG, WebP).',
-            'image.max'   => 'Image must be smaller than 5 MB.',
+            'image.image'       => 'File must be a valid image (JPEG, PNG, WebP).',
+            'image.max'         => 'Image must be smaller than 5 MB.',
+            'daily_limit.min'   => 'Daily limit must be at least 1, or left blank for unlimited.',
         ];
     }
 
@@ -80,27 +84,24 @@ class MenuItemForm extends Component
     {
         $this->validate();
 
+        $payload = [
+            'name'        => $this->name,
+            'description' => $this->description !== '' ? $this->description : null,
+            'type'        => $this->type,
+            'is_veg'      => $this->is_veg,
+            'price'       => $this->price,
+            'daily_limit' => $this->daily_limit !== '' && $this->daily_limit !== null
+                                ? (int) $this->daily_limit
+                                : null,
+            'sort_order'  => $this->sort_order,
+            'is_active'   => $this->is_active,
+        ];
+
         if ($this->item) {
-            $this->item->update([
-                'name'        => $this->name,
-                'description' => $this->description !== '' ? $this->description : null,
-                'type'        => $this->type,
-                'is_veg'      => $this->is_veg,
-                'price'       => $this->price,
-                'sort_order'  => $this->sort_order,
-                'is_active'   => $this->is_active,
-            ]);
+            $this->item->update($payload);
             $item = $this->item;
         } else {
-            $item = MenuItem::create([
-                'name'        => $this->name,
-                'description' => $this->description !== '' ? $this->description : null,
-                'type'        => $this->type,
-                'is_veg'      => $this->is_veg,
-                'price'       => $this->price,
-                'sort_order'  => $this->sort_order,
-                'is_active'   => $this->is_active,
-            ]);
+            $item = MenuItem::create($payload);
         }
 
         // Handle image changes

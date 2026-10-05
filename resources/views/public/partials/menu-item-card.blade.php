@@ -1,9 +1,11 @@
 @php
     $isAvailableToday = $selectable ?? false;
     $isSoldOut = $item->is_sold_out ?? false;
+    $isLimitReached = $item->is_limit_reached ?? false;
+    $remainingToday = $item->remaining_today ?? null;
     $qty = $selectedQty ?? 0;
     $inCart = $qty > 0;
-    $canOrder = $isAvailableToday && ! $isSoldOut;
+    $canOrder = $isAvailableToday && ! $isSoldOut && ! $isLimitReached;
 @endphp
 
 <div @class([
@@ -31,10 +33,10 @@
             </div>
         @endif
 
-        @if ($isSoldOut)
+        @if ($isSoldOut || $isLimitReached)
             <div class="absolute inset-0 flex items-center justify-center bg-slate-900/60">
                 <span class="rounded-full bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-rose-700">
-                    Sold out today
+                    {{ $isSoldOut ? 'Sold out today' : 'Daily limit reached' }}
                 </span>
             </div>
         @elseif (! $isAvailableToday)
@@ -61,8 +63,15 @@
         </div>
 
         <div class="mt-3 flex items-center justify-between gap-2">
-            <div class="text-base font-bold text-slate-900">
-                Nu. {{ number_format($item->price, 0) }}
+            <div>
+                <div class="text-base font-bold text-slate-900">
+                    Nu. {{ number_format($item->price, 0) }}
+                </div>
+                @if ($remainingToday !== null && $remainingToday > 0 && $remainingToday <= 5)
+                    <div class="text-[10px] font-semibold uppercase tracking-wider text-amber-600">
+                        Only {{ $remainingToday }} left
+                    </div>
+                @endif
             </div>
 
             @auth
@@ -108,9 +117,9 @@
                             Add
                         </button>
                     @endif
-                @elseif ($isCustomer && $isSoldOut)
+                @elseif ($isCustomer && ($isSoldOut || $isLimitReached))
                     <span class="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-500">
-                        Sold out
+                        {{ $isSoldOut ? 'Sold out' : 'Limit reached' }}
                     </span>
                 @endif
             @endauth

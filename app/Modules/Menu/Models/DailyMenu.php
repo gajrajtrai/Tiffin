@@ -164,14 +164,37 @@ class DailyMenu extends Model
             ->get()
             ->keyBy('menu_item_id');
 
+        // Batch-load order counts for all published items in one query
+        $orderedCounts = \App\Modules\Order\Models\OrderItem::query()
+            ->selectRaw('menu_item_id, SUM(quantity) as total_qty')
+            ->whereIn('menu_item_id', $dailyMenus->keys())
+            ->whereHas('order', function ($q) use ($dateString) {
+                $q->whereDate('service_date', $dateString)
+                  ->where('status', '!=', \App\Modules\Order\Models\Order::STATUS_CANCELLED);
+            })
+            ->groupBy('menu_item_id')
+            ->pluck('total_qty', 'menu_item_id');
+
         $items = MenuItem::query()
             ->active()
             ->ordered()
             ->whereIn('id', $dailyMenus->keys())
             ->get()
-            ->each(function (MenuItem $item) use ($dailyMenus) {
+            ->each(function (MenuItem $item) use ($dailyMenus, $orderedCounts) {
                 $daily = $dailyMenus->get($item->id);
                 $item->setAttribute('is_sold_out', $daily && $daily->sold_out_at !== null);
+
+                $ordered = (int) ($orderedCounts[$item->id] ?? 0);
+                $item->setAttribute('ordered_today', $ordered);
+
+                if ($item->daily_limit === null) {
+                    $item->setAttribute('remaining_today', null);
+                    $item->setAttribute('is_limit_reached', false);
+                } else {
+                    $remaining = max(0, $item->daily_limit - $ordered);
+                    $item->setAttribute('remaining_today', $remaining);
+                    $item->setAttribute('is_limit_reached', $remaining <= 0);
+                }
             });
 
         return [

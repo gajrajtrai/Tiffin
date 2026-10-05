@@ -232,7 +232,7 @@ test('a customer cannot have two active orders for the same day', function () {
     $service->place($customer, [$item->id => 1], Order::METHOD_PICKUP);
 
     expect(fn () => $service->place($customer, [$item->id => 1], Order::METHOD_PICKUP))
-        ->toThrow(RuntimeException::class, 'You already have an active order for today.');
+        ->toThrow(RuntimeException::class, 'You already ordered for today');
 });
 
 test('a customer can place a new order after the previous one was delivered', function () {

@@ -138,6 +138,27 @@ class OrderService
                 throw new RuntimeException('"'.$menuItem->name.'" is sold out for today.');
             }
 
+            // Per-item daily limit
+            if ($menuItem->daily_limit !== null) {
+                $orderedToday = (int) OrderItem::query()
+                    ->where('menu_item_id', $menuItem->id)
+                    ->whereHas('order', function ($q) use ($locked) {
+                        $q->whereDate('service_date', $locked->service_date)
+                          ->where('status', '!=', Order::STATUS_CANCELLED);
+                    })
+                    ->sum('quantity');
+
+                if ($orderedToday + 1 > $menuItem->daily_limit) {
+                    $remaining = max(0, $menuItem->daily_limit - $orderedToday);
+
+                    throw new RuntimeException(
+                        $remaining > 0
+                            ? '"'.$menuItem->name.'" — only '.$remaining.' remaining today.'
+                            : '"'.$menuItem->name.'" has reached today\'s limit.'
+                    );
+                }
+            }
+
             $customer = User::query()->lockForUpdate()->findOrFail($locked->user_id);
             $itemPrice = (float) $menuItem->price;
 

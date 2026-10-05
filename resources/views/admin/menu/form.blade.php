@@ -62,7 +62,7 @@
                     </div>
                 </div>
 
-                <div class="grid gap-4 sm:grid-cols-2">
+                <div class="grid gap-4 sm:grid-cols-3">
                     <div>
                         <label class="mb-1 block text-xs font-medium text-slate-600">Price (Nu.) <span class="text-rose-500">*</span></label>
                         <input type="number" step="0.01" min="0" max="99999"
@@ -70,6 +70,16 @@
                                placeholder="120.00"
                                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500" />
                         @error('price') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
+                    </div>
+
+                    <div>
+                        <label class="mb-1 block text-xs font-medium text-slate-600">Daily Limit</label>
+                        <input type="number" min="1" max="9999"
+                               wire:model="daily_limit"
+                               placeholder="Unlimited"
+                               class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500" />
+                        <p class="mt-1 text-[11px] text-slate-400">Max per day across all customers. Blank = no limit.</p>
+                        @error('daily_limit') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
                     </div>
 
                     <div>

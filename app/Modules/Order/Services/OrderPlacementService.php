@@ -78,7 +78,10 @@ class OrderPlacementService
             ->exists();
 
         if ($hasActive) {
-            throw new RuntimeException('You already have an active order for today.');
+            throw new RuntimeException(
+                'You already ordered for today. Open your existing order to add more items, '
+                .'or contact us to cancel it if you need to start fresh.'
+            );
         }
 
         // Load items
@@ -108,6 +111,29 @@ class OrderPlacementService
 
             if ($daily->sold_out_at !== null) {
                 throw new RuntimeException('"'.$item->name.'" is sold out for today.');
+            }
+
+            // Per-item daily limit
+            if ($item->daily_limit !== null) {
+                $orderedToday = (int) OrderItem::query()
+                    ->where('menu_item_id', $item->id)
+                    ->whereHas('order', function ($q) use ($date) {
+                        $q->whereDate('service_date', $date)
+                          ->where('status', '!=', Order::STATUS_CANCELLED);
+                    })
+                    ->sum('quantity');
+
+                $requested = $cart[$item->id];
+
+                if ($orderedToday + $requested > $item->daily_limit) {
+                    $remaining = max(0, $item->daily_limit - $orderedToday);
+
+                    throw new RuntimeException(
+                        $remaining > 0
+                            ? '"'.$item->name.'" — only '.$remaining.' remaining today.'
+                            : '"'.$item->name.'" has reached today\'s limit.'
+                    );
+                }
             }
         }
 

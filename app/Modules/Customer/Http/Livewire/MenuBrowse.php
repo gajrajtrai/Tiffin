@@ -114,6 +114,12 @@ class MenuBrowse extends Component
             return false;
         }
 
+        $item = MenuItem::find($menuItemId);
+
+        if ($item && $item->isLimitReached()) {
+            return false;
+        }
+
         return true;
     }
 

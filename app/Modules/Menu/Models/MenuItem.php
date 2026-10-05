@@ -23,15 +23,17 @@ class MenuItem extends Model implements HasMedia
     protected $fillable = [
         'name', 'slug', 'description', 'type', 'is_veg',
         'price', 'image_path', 'sort_order', 'is_active',
+        'daily_limit',
     ];
 
     protected function casts(): array
     {
         return [
-            'is_veg'     => 'boolean',
-            'is_active'  => 'boolean',
-            'price'      => 'decimal:2',
-            'sort_order' => 'integer',
+            'is_veg'      => 'boolean',
+            'is_active'   => 'boolean',
+            'price'       => 'decimal:2',
+            'sort_order'  => 'integer',
+            'daily_limit' => 'integer',
         ];
     }
 
@@ -186,5 +188,41 @@ class MenuItem extends Model implements HasMedia
     public function canBeDeleted(): bool
     {
         return ! $this->orderItems()->exists();
+    }
+	    /**
+     * How many of this item have been ordered today (across all customers,
+     * excluding cancelled orders)? Delivered/picked_up orders still count —
+     * the food was made and consumed.
+     */
+    public function orderedToday(): int
+    {
+        return (int) \App\Modules\Order\Models\OrderItem::query()
+            ->where('menu_item_id', $this->id)
+            ->whereHas('order', function ($q) {
+                $q->whereDate('service_date', today())
+                  ->where('status', '!=', \App\Modules\Order\Models\Order::STATUS_CANCELLED);
+            })
+            ->sum('quantity');
+    }
+
+    /**
+     * How many more can still be ordered today?
+     * Returns null when no limit is set.
+     */
+    public function remainingToday(): ?int
+    {
+        if ($this->daily_limit === null) {
+            return null;
+        }
+
+        return max(0, $this->daily_limit - $this->orderedToday());
+    }
+
+    /**
+     * Has the daily limit been reached?
+     */
+    public function isLimitReached(): bool
+    {
+        return $this->daily_limit !== null && $this->remainingToday() <= 0;
     }
 }
