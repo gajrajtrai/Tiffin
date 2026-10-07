@@ -3,9 +3,12 @@
 namespace App\Modules\Admin\Http\Livewire;
 
 use App\Modules\Menu\Models\DailyMenu;
+use App\Modules\Menu\Models\MenuItem;
 use App\Modules\Order\Models\Order;
+use App\Modules\Order\Models\OrderItem;
 use App\Modules\Order\Services\OrderService;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -50,6 +53,9 @@ class KitchenBoard extends Component
         if (! auth()->user()->can('menu.publish')) {
             abort(403);
         }
+
+        // Bust the sold-out cache so the next poll reflects the change immediately
+        Cache::forget('menu.sold_out.'.today()->toDateString());
 
         try {
             $nowSoldOut = DailyMenu::toggleSoldOut(today(), $menuItemId);
@@ -250,6 +256,9 @@ class KitchenBoard extends Component
 
     public function render(): View
     {
+        $today = today();
+        $todayStr = $today->toDateString();
+
         $columns = [
             [
                 'key'      => 'new',
@@ -290,26 +299,39 @@ class KitchenBoard extends Component
                 ->values();
         }
 
+        // ─── Stats: one aggregate query instead of three counts ───
+        $statsRow = Order::forToday()
+            ->selectRaw('
+                COUNT(*) as total_today,
+                SUM(CASE WHEN status IN (?, ?) THEN 1 ELSE 0 END) as completed,
+                SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as rejected
+            ', [
+                Order::STATUS_DELIVERED,
+                Order::STATUS_PICKED_UP,
+                Order::STATUS_CANCELLED,
+            ])
+            ->first();
+
         $stats = [
-            'totalToday' => Order::forToday()->count(),
-            'completed'  => Order::forToday()
-                                ->whereIn('status', [Order::STATUS_DELIVERED, Order::STATUS_PICKED_UP])
-                                ->count(),
-            'rejected'   => Order::forToday()
-                                ->where('status', Order::STATUS_CANCELLED)
-                                ->count(),
-            'active'     => $orders->count(),
+            'totalToday' => (int) $statsRow->total_today,
+            'completed'  => (int) $statsRow->completed,
+            'rejected'   => (int) $statsRow->rejected,
+            'active'     => $orders->count(), // already in memory
         ];
 
-        // ─── Sold-out flags for today ─────────────────────────────
-        $soldOutIds = DailyMenu::query()
-            ->whereDate('service_date', today())
-            ->whereNotNull('sold_out_at')
-            ->pluck('menu_item_id')
-            ->all();
+        // ─── Sold-out flags for today (cached 60s) ───
+$soldOutIds = Cache::remember(
+    'menu.sold_out.'.$todayStr,
+    60,
+    fn () => DailyMenu::query()
+        ->whereDate('service_date', $todayStr)
+        ->whereNotNull('sold_out_at')
+        ->pluck('menu_item_id')
+        ->all()   // ← ensure this ->all() is present
+);
 
-        // ─── Prep summary — items still in play ───────────────────
-        $prepRows = \App\Modules\Order\Models\OrderItem::query()
+        // ─── Prep summary — items still in play ───
+        $prepRows = OrderItem::query()
             ->selectRaw('
                 menu_item_id,
                 item_name,
@@ -329,11 +351,14 @@ class KitchenBoard extends Component
             ->orderByDesc('total_qty')
             ->get();
 
-        // Annotate with sold-out status and daily limit
-        $limits = \App\Modules\Menu\Models\MenuItem::whereIn('id', $prepRows->pluck('menu_item_id'))
-            ->pluck('daily_limit', 'id');
+        // Menu limits cached until end of day — they rarely change mid-shift
+$limits = Cache::remember(
+    'menu.limits.'.$todayStr,
+    86400,
+    fn () => MenuItem::pluck('daily_limit', 'id')->all()
+);
 
-        $orderedTotalForLimit = \App\Modules\Order\Models\OrderItem::query()
+        $orderedTotalForLimit = OrderItem::query()
             ->selectRaw('menu_item_id, SUM(quantity) as total_qty')
             ->whereIn('menu_item_id', $prepRows->pluck('menu_item_id'))
             ->whereHas('order', function ($q) {

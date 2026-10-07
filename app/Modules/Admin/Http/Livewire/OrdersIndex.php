@@ -97,23 +97,32 @@ class OrdersIndex extends Component
 
         $orders = $query->orderByDesc('created_at')->paginate(20);
 
-        // Summary cards — always for the selected date, ignoring filters
-        $baseForDay = Order::forDate($date);
+        // ─── Summary: one aggregate query for the whole day ───
+        // Ignores the active filters on purpose — always reflects the day's true state.
+        $summary = Order::forDate($date)
+            ->selectRaw('
+                COUNT(*) as total,
+                SUM(CASE WHEN status IN (?, ?, ?) THEN 1 ELSE 0 END) as active,
+                SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as ready,
+                SUM(CASE WHEN status IN (?, ?) THEN 1 ELSE 0 END) as completed,
+                COALESCE(SUM(CASE WHEN status != ? THEN total ELSE 0 END), 0) as revenue
+            ', [
+                Order::STATUS_PENDING,
+                Order::STATUS_CONFIRMED,
+                Order::STATUS_PREPARING,
+                Order::STATUS_READY,
+                Order::STATUS_DELIVERED,
+                Order::STATUS_PICKED_UP,
+                Order::STATUS_CANCELLED,
+            ])
+            ->first();
+
         $counts = [
-            'total'      => (clone $baseForDay)->count(),
-            'active'     => (clone $baseForDay)->whereIn('status', [
-                                Order::STATUS_PENDING,
-                                Order::STATUS_CONFIRMED,
-                                Order::STATUS_PREPARING,
-                            ])->count(),
-            'ready'      => (clone $baseForDay)->where('status', Order::STATUS_READY)->count(),
-            'completed'  => (clone $baseForDay)->whereIn('status', [
-                                Order::STATUS_DELIVERED,
-                                Order::STATUS_PICKED_UP,
-                            ])->count(),
-            'revenue'    => (float) (clone $baseForDay)
-                                ->where('status', '!=', Order::STATUS_CANCELLED)
-                                ->sum('total'),
+            'total'     => (int) $summary->total,
+            'active'    => (int) $summary->active,
+            'ready'     => (int) $summary->ready,
+            'completed' => (int) $summary->completed,
+            'revenue'   => (float) $summary->revenue,
         ];
 
         return view('admin.orders.index', compact('orders', 'counts', 'date'));

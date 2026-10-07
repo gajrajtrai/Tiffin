@@ -1,0 +1,40 @@
+ Volume in drive C has no label.
+ Volume Serial Number is B28E-F639
+
+ Directory of C:\tiffin\app\Modules\Admin\Http\Livewire
+
+10/07/2026  02:10 AM    <DIR>          .
+10/07/2026  02:10 AM    <DIR>          ..
+10/07/2026  01:09 AM             5,634 AuditLogIndex.php
+10/07/2026  01:09 AM             5,808 ClosureRequestsIndex.php
+10/07/2026  01:09 AM             7,158 DailyPublisher.php
+10/07/2026  01:09 AM             2,904 Dashboard.php
+10/07/2026  01:09 AM             5,684 ExpenseCategoriesIndex.php
+10/07/2026  01:09 AM             5,439 ExpenseForm.php
+10/07/2026  01:09 AM             7,686 ExpensesIndex.php
+10/07/2026  01:09 AM             7,868 GoodsReceiptDetail.php
+10/07/2026  01:09 AM             2,570 GoodsReceiptsIndex.php
+10/07/2026  01:09 AM             6,959 InventoryItemDetail.php
+10/07/2026  01:09 AM             4,466 InventoryItemForm.php
+10/07/2026  01:09 AM             2,596 InventoryItemsIndex.php
+10/07/2026  01:09 AM            11,846 KitchenBoard.php
+10/07/2026  02:10 AM                 0 livewire_http.txt
+10/07/2026  01:09 AM             4,947 ManualOrderForm.php
+10/07/2026  01:09 AM             4,195 MenuItemForm.php
+10/07/2026  01:09 AM             3,039 MenuItemsIndex.php
+10/07/2026  01:09 AM             4,514 OrderDetail.php
+10/07/2026  01:09 AM             3,632 OrdersIndex.php
+10/07/2026  01:09 AM             5,278 PaymentsIndex.php
+10/07/2026  01:09 AM             3,557 PurchaseOrderDetail.php
+10/07/2026  01:09 AM             8,230 PurchaseOrderForm.php
+10/07/2026  01:09 AM             2,591 PurchaseOrdersIndex.php
+10/07/2026  01:09 AM             8,993 ReportsDashboard.php
+10/07/2026  01:09 AM            13,128 SettingsIndex.php
+10/07/2026  01:09 AM             3,550 SupplierForm.php
+10/07/2026  01:09 AM             3,055 SuppliersIndex.php
+10/07/2026  01:09 AM             5,561 UserDetail.php
+10/07/2026  01:09 AM             4,694 UserForm.php
+10/07/2026  01:09 AM             2,478 UsersIndex.php
+10/07/2026  01:09 AM             7,358 WeeklyPublisher.php
+              31 File(s)        165,418 bytes
+               2 Dir(s)  61,389,873,152 bytes free

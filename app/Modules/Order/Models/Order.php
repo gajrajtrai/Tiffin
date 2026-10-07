@@ -34,8 +34,8 @@ class Order extends Model
         'total', 'status', 'payment_status',
         'wallet_transaction_id', 'notes',
         'cancelled_at', 'cancelled_reason',
-		'editable_until',
-		'is_manual', 'entered_by',
+        'editable_until',
+        'is_manual', 'entered_by',
     ];
 
     protected function casts(): array
@@ -45,7 +45,7 @@ class Order extends Model
             'total'          => 'decimal:2',
             'cancelled_at'   => 'datetime',
             'editable_until' => 'datetime',
-			'is_manual'      => 'boolean',
+            'is_manual'      => 'boolean',
         ];
     }
 
@@ -59,24 +59,28 @@ class Order extends Model
     }
 
     /**
-     * Human-readable number: TTF-20260917-0001
+     * Human-readable per-day sequence, e.g. 261005-01.
+     * - Prefix YYMMDD per service_date; sequence resets at 1 each day.
+     * - Padding is a minimum — days exceeding 99 orders grow to 3+ digits
+     *   without a code change (261005-99 → 261005-100).
+     *
+     * Uses MAX(CAST(SUBSTRING(...))) restricted to the day's prefix, which
+     * rides the unique index on order_number as a range scan. Cost is
+     * proportional to that day's orders — not the whole table.
      */
     protected static function generateOrderNumber(Carbon|string $serviceDate): string
     {
-        // YYMMDD-NN. Sequence resets daily. Padding is a minimum — a day
-        // that exceeds 99 orders naturally extends to 3 digits without code
-        // change (e.g., 261005-100).
-        $dateStr = Carbon::parse($serviceDate)->format('ymd');
-        $base = $dateStr.'-';
+        $prefix = Carbon::parse($serviceDate)->format('ymd').'-';
 
-        $attempt = 0;
-        do {
-            $count = static::whereDate('service_date', $serviceDate)->count();
-            $number = $base.str_pad((string) ($count + 1 + $attempt), 2, '0', STR_PAD_LEFT);
-            $attempt++;
-        } while (static::where('order_number', $number)->exists() && $attempt < 9999);
+        $max = (int) static::query()
+            ->where('order_number', 'like', $prefix.'%')
+            ->selectRaw(
+                'COALESCE(MAX(CAST(SUBSTRING(order_number, ?) AS UNSIGNED)), 0) as max_seq',
+                [strlen($prefix) + 1]
+            )
+            ->value('max_seq');
 
-        return $number;
+        return $prefix.str_pad((string) ($max + 1), 2, '0', STR_PAD_LEFT);
     }
 
     /*
@@ -109,6 +113,11 @@ class Order extends Model
     public function walletTransaction(): BelongsTo
     {
         return $this->belongsTo(WalletTransaction::class);
+    }
+
+    public function enteredBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'entered_by');
     }
 
     /*
@@ -178,6 +187,11 @@ class Order extends Model
         return $this->delivery_method === self::METHOD_PICKUP;
     }
 
+    public function isManual(): bool
+    {
+        return (bool) $this->is_manual;
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Display helpers
@@ -211,7 +225,8 @@ class Order extends Model
             default                => 'slate',
         };
     }
-	    /*
+
+    /*
     |--------------------------------------------------------------------------
     | Edit window helpers
     |--------------------------------------------------------------------------
@@ -247,13 +262,5 @@ class Order extends Model
         }
 
         return max(0, $this->editable_until->getTimestamp() - now()->getTimestamp());
-    }
-	    public function enteredBy(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'entered_by');
-    }
-	    public function isManual(): bool
-    {
-        return (bool) $this->is_manual;
     }
 }

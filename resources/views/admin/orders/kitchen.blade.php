@@ -1,6 +1,6 @@
 @use('App\Modules\Order\Models\Order')
 
-<div class="space-y-4" wire:poll.15s>
+<div class="space-y-4" wire:poll.5s.visible>
 
     {{-- ─── Header row ─────────────────────────────────────── --}}
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -8,7 +8,7 @@
             <h1 class="text-xl font-bold text-slate-900">Kitchen Prep Board</h1>
             <p class="mt-1 text-sm text-slate-500">
                 <span class="font-semibold text-slate-700">{{ now()->format('l, F j, Y') }}</span>
-                · Auto-refreshes every 15 seconds
+                · Auto-refreshes every 5 seconds (paused when tab is hidden)
                 <span class="ml-2 inline-flex items-center gap-1 text-xs text-emerald-600">
                     <span class="relative flex h-2 w-2">
                         <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
@@ -115,7 +115,7 @@
                         @else
                             <ul class="space-y-2">
                                 @foreach ($prepMains as $row)
-                                    <li class="flex items-center gap-3">
+                                    <li wire:key="prep-m-{{ $row->menu_item_id }}" class="flex items-center gap-3">
                                         <span class="{{ $row->is_veg ? 'text-emerald-600' : 'text-rose-600' }}">●</span>
                                         <span class="min-w-0 flex-1 truncate text-sm font-medium text-slate-800">
                                             {{ $row->item_name }}
@@ -182,7 +182,7 @@
                         @else
                             <ul class="space-y-2">
                                 @foreach ($prepFastFood as $row)
-                                    <li class="flex items-center gap-3">
+                                    <li wire:key="prep-f-{{ $row->menu_item_id }}" class="flex items-center gap-3">
                                         <span class="{{ $row->is_veg ? 'text-emerald-600' : 'text-rose-600' }}">●</span>
                                         <span class="min-w-0 flex-1 truncate text-sm font-medium text-slate-800">
                                             {{ $row->item_name }}
@@ -241,7 +241,8 @@
                     $style = $colStyles[$col['key']];
                 @endphp
 
-                <div class="flex flex-col rounded-xl border {{ $style['border'] }} bg-slate-50 shadow-sm">
+                <div wire:key="col-{{ $col['key'] }}"
+                     class="flex flex-col rounded-xl border {{ $style['border'] }} bg-slate-50 shadow-sm">
 
                     {{-- Column header --}}
                     <div class="rounded-t-xl {{ $style['header'] }} px-4 py-3">
@@ -306,7 +307,8 @@
                                 $isNew = in_array($order->status, [Order::STATUS_PENDING, Order::STATUS_CONFIRMED], true);
                             @endphp
 
-                            <div class="rounded-lg border border-slate-200 bg-white shadow-sm transition hover:shadow-md">
+                            <div wire:key="order-{{ $order->id }}"
+                                 class="rounded-lg border border-slate-200 bg-white shadow-sm transition hover:shadow-md">
 
                                 {{-- Header --}}
                                 <div class="flex items-center justify-between border-b border-slate-100 px-3 py-2">
@@ -349,7 +351,8 @@
                                         <div class="text-xs font-semibold text-slate-500">Items</div>
                                         <ul class="mt-1 space-y-1">
                                             @foreach ($order->items as $item)
-                                                <li class="flex items-start gap-2 text-sm text-slate-800">
+                                                <li wire:key="item-{{ $order->id }}-{{ $item->id }}"
+                                                    class="flex items-start gap-2 text-sm text-slate-800">
                                                     <span class="{{ $item->is_veg ? 'text-emerald-600' : 'text-rose-600' }} mt-0.5">●</span>
                                                     <span class="flex-1 font-medium">
                                                         @if ($item->quantity > 1)
